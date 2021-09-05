@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>cat jump</title>
+  <style>
+    html,
+    body {
+        width: 100%;
+        height: 100%;
+    },
+    element.style{
+            height: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<script type="module">
+
+let desktop = true
+if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ) {
+desktop = false
+}
+
+
+// import kaboom lib
+import kaboom from "https://unpkg.com/kaboom@next/dist/kaboom.mjs";
+// initialize kaboom context
+
+kaboom({
+    width:352,
+    height: 352,
+    scale: 2,
+    crisp: false,
+    global: true,
+    font: 'sink',
+    // stretch:true,
+    // letterbox:true,
+    // canvas: document.getElementById("game")
+});
+
+function randBetween(min, max) {
+    return Math.random() * (max - min) + min;
+}
+
+
+    const TILE_W = 16;
+    const TILE_H = 16;
+    const WALL = 50;
+    const FLOOR = 65;
+    const SIGN_RIGHT = 93;
+    const SIGN_LEFT = 92;
+    const PRIZE = 96;
+    let angle = 0;
+
+    gravity(1000);
+    let stamina = 3;
+    let jumpiness = 5;
+    let fatness = 0
+    
+
+loadSprite("cat", "cat.png",{
+    sliceX:4,
+    sliceY:1,
+    anims: {
+        fat_0: {from: 0, to: 0},
+        fat_1: {from: 1, to: 1},
+        fat_2: {from: 2, to: 2},
+        fat_3: {from: 3, to: 3},
+    }});
+loadSprite("menu", "menu.png");
+loadSprite("bg", "bg.png");
+loadSprite("reward", "reward.png");
+
+
+loadSprite("menu2", "menu2.png");
+loadSprite("tiles", "monochrome_tilemap_transparent_packed.png", {
+    sliceX: 20,
+    sliceY: 20,
+});
+
+if (desktop == true){
+    // debug.log("desktop")
+    loadSound("music", "aslan_tune.mp3")
+    loadSound("meow", "meow.mp3")
+    loadSound("lilmeow", "lilmeow.mp3")
+    loadSound("jump", "jump.mp3")
+    loadSound("eat", "SLURP.ogg")
+    
+}
+
+function play_2(soundfile,detune,speed,volume){
+    if(desktop){
+     const sound = play(soundfile);
+     sound.volume(volume);
+     sound.detune(detune);
+     sound.speed(speed);
+     sound.play();
+    }
+}
+
+
+function addButton(txt, p, f) {
+
+    const bg = add([
+        pos(p),
+        rect(90, 30),
+        area(),
+        origin("center"),
+        color(194, 119, 89),
+    ]);
+
+    add([
+        text(txt, 8),
+        pos(p),
+        origin("center"),
+        color(255,255,255),
+    ]);
+
+    bg.action(() => {
+        if (bg.isHovered()) {
+            bg.color = rgb(83, 184, 161);
+            if (mouseIsClicked()) {
+                f();
+            }
+        } else {
+            bg.color = rgb(194, 119, 89);
+        }
+    });
+
+}
+
+scene("menu", () => {
+
+    const menu = add([
+        sprite("menu"),
+        pos(352/2, 352/2),
+        origin("center"),
+    ]);
+    addButton("start game", vec2(352/2, 320), () => startgame());
+
+})
+
+function startgame(){
+        if (desktop){
+        play_2("meow",0,1,.4);
+        const music = play("music")
+        music.stop();
+        music.play();
+        music.volume(.5);
+        music.loop();
+    }
+    go("game")
+}
+scene("game", () => {
+    const background = add([
+        sprite("bg"),
+        pos(352/2, 352/2),
+        origin("center"),
+    ]);
+
+    const cat = add([
+        sprite("cat"),
+        pos(352/2, 352/2),
+        origin("center"),
+        body({maxVel: 1000,}),
+        area(),
+    ]);
+    cat.play("fat_0");
+    let cat_jump = 200
+    let cat_jumpiness = 5
+    let reward_added = 0
+    fatness = 0;
+
+
+    let dest = vec2(0,0);
+    let timeleft = 60
+    let timeoffset = 60
+    stamina = 3
+
+    timeoffset = time()+59.5;
+
+    let score = 0;
+
+    cat.action(() => {
+        dest.y = 0
+        cat.moveTo(vec2(dest.x,dest.y), jumpiness);
+        if(stamina==0){
+            cat.color = rgb(255, 1, 1);
+        }
+        if(stamina==1){
+            cat.color = rgb(255, 100, 1);
+        }
+        if(stamina==2){
+            cat.color = rgb(255, 200, 128);
+        }
+        if(stamina==3){
+            cat.color = rgb(255, 255, 255);
+        }
+    });
+
+    cat.collides("food", (f) => {
+        play_2("eat",2,1 - fatness * .05  ,.3);
+        destroy(f);
+        score++;
+        increasefatness();
+        updatescore();
+        // const music = play("music");
+    });
+
+    cat.collides("reward", (f) => {
+        play_2("eat",2,1 - fatness * .05,.3);
+        destroy(f);
+        score=score+20;
+        increasefatness();
+        updatescore();
+    });
+
+
+    cat.on("ground", () => {
+        jumpiness = 0
+    })
+
+    mouseClick(() => {
+        if (stamina >= 1){
+            stamina-= 1;
+            dest = mousePos();
+            cat.jump(cat_jump);
+            jumpiness = cat_jumpiness;
+            play_2("jump",2+ fatness,1 - fatness * .05,.6);
+           
+        }
+         updatescore()
+        // cat.moveTo(dest, 10);
+    });
+
+
+    addLevel([
+        "!====================!",
+        "!                    !",
+        "!                    !",
+        "!       !            !",
+        "!    =====           !",
+        "!                  !!!",
+        "!               =====!",
+        "!                    !",
+        "!                    !",
+        "!                    !",
+        "!!!                  !",
+        "!=====               !",
+        "!                   !!",
+        "!                  !!!",
+        "!                 !!!!",
+        "!                 !!!!",
+        "!                 !!!!",
+        "!                !!!!!",
+        "!                !!!!!",
+        "!                !!!!!",
+        "!                !!!!!",
+        "!====================!"
+    ], {
+        width: TILE_W,
+        height: TILE_H,
+        "=": [
+            sprite("tiles", {
+                frame: FLOOR,
+            }),
+            area(),
+            color(24, 27,30),
+            // area(vec2(0, 0), vec2(TILE_W, 16)),
+            solid(),
+        ],
+        "!": [
+            sprite("tiles", {
+                frame: WALL,
+            }),
+            area(),
+            color(24, 27,30),
+            solid(),
+        ],
+        "<": [
+            sprite("tiles", {
+                frame: SIGN_LEFT,
+            }),
+            area(),
+            color(0, 1, 0),
+            solid(),
+        ],
+        ">": [
+            sprite("tiles", {
+                frame: SIGN_RIGHT,
+            }),
+            area(),
+            color(0, 1, 0),
+            solid(),
+        ],
+    });
+
+    loop(1, () => {
+        if(stamina==0){
+            //pass
+            stamina+=1;
+        }else{
+            stamina+=1;
+            if(stamina > 3){
+                stamina=3;
+            }
+        }
+        updatescore()
+
+    });
+
+    function increasefatness() {
+        if(score>8){
+            cat.play("fat_1");
+            cat_jump = 180
+            cat_jumpiness = 4
+            fatness =1
+        }
+        if(score>15){
+            cat.play("fat_2");
+            cat_jump = 130
+            cat_jumpiness = 3
+            fatness = 2
+        }
+        if(score>30){
+            cat.play("fat_3");
+            cat_jump = 100
+            cat_jumpiness = 2
+            fatness = 3;
+        }
+    }
+
+    function updatescore() {
+        debug.clearLog();
+        timeleft = Math.ceil(timeleft=timeoffset-time());
+        debug.log("stamina: " + String(stamina) + "/3" + "  " + " score: " + String(score) + "  time remaining: " + String(timeleft) + " seconds");
+
+        if (timeleft == 30){
+            add_reward();
+        }
+
+        if (timeleft == 10){
+            addButton("MEOW!", vec2(352/2, 20), () => meow_button());
+        }
+
+        if (timeleft <= 0){
+            
+            go("gameover", score);
+        }
+
+    }
+    function meow_button(){
+        add_food();
+        play_2("meow",0,1-score*.01+randBetween(0,.1),.1);
+    }
+    function add_food(){
+        add([
+            sprite("tiles",{frame: choose([40,41,42])}),
+            pos(randBetween(25,352-25), 20),
+            origin("center"),
+            // body({maxVel: 100,}),
+            area(),
+            "food"
+        ]);  
+    }
+
+    function add_reward(){
+        if(reward_added==0){
+            add([
+                sprite("reward",),
+                pos(randBetween(25,352-25), 40),
+                origin("center"),
+                // body({maxVel: 100,}),
+                area(),
+                "reward"
+            ]); 
+            reward_added=1; 
+    }
+    }
+    loop(randBetween(2,10), () => {
+        if (time() > 5){
+        add_food()
+        }
+    });
+
+    loop(randBetween(2,10), () => {
+        if (time() > 5){
+        add_food()
+        }
+    });
+
+    loop(randBetween(10,15), () => {
+        if (time() > 5){
+            add_food()
+            add_food()
+            add_food()
+            add_food()
+            add_food()
+            add_food()
+            add_food()
+            add_food()
+        }
+    });
+
+    loop(1, () => {
+        updatescore()
+    });
+
+    on("update", "food", (food) => {
+        food.pos.y += 2*randBetween(0.8,1.2);
+        if(food.pos.y < (1*food.width))
+            destroy(food);
+    });
+});
+
+scene("gameover", (score) => {
+    // display score passed by scene "main"
+    const menu = add([
+        sprite("menu2"),
+        pos(352/2, 352/2),
+        origin("center"),
+    ]);
+    add([
+        text('ur score is ' + String(score) + ' nice work!'),
+        pos(10, 290),
+    ]);
+    addButton("start game", vec2(352/2, 320), () => go("game"));
+});
+
+go("menu");
+
+</script>
+</body>
+</html>
