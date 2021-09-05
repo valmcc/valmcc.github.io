@@ -236,6 +236,13 @@ scene("game", () => {
     });
 
 
+    const floor = add([
+        pos(0, 352-TILE_H),
+        rect(352, -1000),
+        solid(),
+        area(),
+    ]);
+
     addLevel([
         "!====================!",
         "!                    !",
