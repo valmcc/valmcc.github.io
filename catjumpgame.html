@@ -154,6 +154,14 @@ function startgame(){
     go("game")
 }
 scene("game", () => {
+    const floor = add([
+        pos(0, 352-1000),
+        rect(352, 1000),
+        solid(),
+        area(),
+        opacity(0),
+    ]);
+    
     const background = add([
         sprite("bg"),
         pos(352/2, 352/2),
@@ -234,16 +242,6 @@ scene("game", () => {
          updatescore()
         // cat.moveTo(dest, 10);
     });
-
-
-    const floor = add([
-        pos(0, 352-1000),
-        rect(352, 1000),
-        solid(),
-        area(),
-        opacity(0),
-    ]);
-
     addLevel([
         "!====================!",
         "!                    !",
