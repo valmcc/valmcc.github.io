@@ -160,6 +160,7 @@ scene("game", () => {
         solid(),
         area(352, 1000),
         opacity(0),
+        'floor'
     ]);
 
     const background = add([
@@ -225,6 +226,9 @@ scene("game", () => {
         updatescore();
     });
 
+    player.collides('floor', ()=>{
+        player.move(0,-TILE_H)
+    })
 
     cat.on("ground", () => {
         jumpiness = 0
