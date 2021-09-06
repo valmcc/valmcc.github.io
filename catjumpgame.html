@@ -227,7 +227,7 @@ scene("game", () => {
     });
 
     cat.collides('floor', ()=>{
-        player.move(0,-TILE_H)
+        cat.move(0,-TILE_H)
     })
 
     cat.on("ground", () => {
