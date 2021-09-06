@@ -226,7 +226,7 @@ scene("game", () => {
         updatescore();
     });
 
-    player.collides('floor', ()=>{
+    cat.collides('floor', ()=>{
         player.move(0,-TILE_H)
     })
 
