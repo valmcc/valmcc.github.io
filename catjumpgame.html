@@ -155,13 +155,13 @@ function startgame(){
 }
 scene("game", () => {
     const floor = add([
-        pos(0, 352-1000),
-        rect(352, 1000),
+        pos(0, 352-200),
+        rect(352, 200),
         solid(),
         area(),
         opacity(0),
     ]);
-    
+
     const background = add([
         sprite("bg"),
         pos(352/2, 352/2),
