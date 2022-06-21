@@ -255,7 +255,7 @@ let feedtimer4 = 0;
 let firstTimeUsedLaptop = true;
 let firstTimeUsedPhone = true;
 let firstTimeUsedFridge = true;
-let money = 0;
+let money = 99999;
 let countAutoClicker = 0;
 let laptop2Progression = 0;
 let laptop1Progression = 0;
@@ -1460,21 +1460,21 @@ function addAutoClicker(i,load=false){
     barNo = randBetweenInt(1, num_bars)
     if (barNo==1){
         if (bar1AutoClick <= 4) {
-            if (!load) {bar1AutoClick = min(4,bar1AutoClick+1)}
+            if (!load) {bar1AutoClick = Math.min(4,bar1AutoClick+1)}
         } else {
             barNo = 2
         }
     }
     if (barNo==2){
         if (bar2AutoClick <= 4) {
-            if (!load) {bar2AutoClick = min(4,bar2AutoClick+1)}
+            if (!load) {bar2AutoClick = Math.min(4,bar2AutoClick+1)}
         } else {
             barNo = 3
         }
     }
     if (barNo==3){
         if (bar3AutoClick <= 4) {
-            if (!load) {bar3AutoClick = min(4,bar3AutoClick+1)}
+            if (!load) {bar3AutoClick = Math.min(4,bar3AutoClick+1)}
         } else {
             barNo = 4
         }
