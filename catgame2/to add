@@ -1,0 +1,42 @@
+to add
+- add options for the fridge X
+- more food types X
+- telephone that lets you buy more cats X
+	- make sprite X
+	- add to game world X
+	- code menu options X
+	- program aslan to get fatter X
+	- fix cursor X
+- fix text boxes overlap X
+- save option X
+- make aslan not go to food so fast (more random walk function) X
+- aslan gets fatter as he eats more food, and when he's full he needs to go to the purple blanket to rest X
+- notification over laptop/fridge when you can buy new stuff X
+- little progress bars over laptop/fridge X
+- change slurp noise with ching money noise (more for more money) X
+- stop food spawning over fridge and laptop area X
+- lil puffs of smoke when food appears X
+-  dont use collision detection, just disable where aslan's 'dest' can go to(performance increase) X
+- run game logic at half framerate (hack) X
+- autofeed location is in the wrong place X
+- little presents can drop that give more money if u click on them X
+- sometimes drop present X
+- love overlaps the ui X
+- purple blanket X
+	- make sprite X
+	- add to game via laptop X
+	- make fat aslan go to sleep X
+- sprites for all the things you buy X
+- golden aslan statue X
+- make loading better/saving X
+- fix sprite for chicken X
+- music "zora's domain - orcarina of time" X
+- add sound for picking up present X
+- add animation for picking up present X
+- sprites for all the types of cats X
+- balance the game
+----
+- add sleeping graphic
+- slan walk animation
+- after buying item, the prompts are much faster
+- tinkerbell comes in and steals food
