@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>cat in a boat</title>
+<style>
+body { 
+    margin: 0; 
+    overflow: hidden; 
+    background-color: #ffc0cb; /* Pink background color */
+    display: flex; /* Enable flexbox for centering */
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    min-height: 100vh; /* Ensure full viewport height */
+    flex-direction: column; /* Stack title, controls, and canvas vertically */
+}
+
+#game-container { /* Container for title, controls and canvas */
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center content within the container */
+}
+
+#gameCanvas { 
+    display: block;
+}
+
+#title {
+    font-family: "Comic Sans MS", "Comic Sans", cursive; /* Comic Sans font */
+    font-size: 2em; /* Adjust size as needed */
+    margin-bottom: 10px; /* Space between title and controls */
+}
+
+#controls {
+    text-align: center;
+    margin-bottom: 20px; /* Space between controls and canvas */
+}
+</style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="title">cat in a boat</div>
+    <div id="info">it's christmas, but santa has dropped all his presents in the ocean!</div>
+    <div id="info">deliver the presents to the houses to save christmas!!!</div>
+    <div id="controls">WASD: move cat</div>
+    <div id="info">by valerian 2024</div>
+    <canvas id="gameCanvas"></canvas>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<!-- <script src="https://unpkg.com/kaplay@3001/dist/kaplay.js"></script> -->
+<script type="module">
+import kaplay from 'https://cdn.jsdelivr.net/npm/kaplay@3001.1.0-beta.0/+esm'
+
+
+kaplay({
+    width: 320,
+    height: 240,
+    font: "sans-serif",
+    canvas: document.querySelector("#gameCanvas"),
+    background: [ 151, 178, 205, ],
+    scale: 2,
+    crisp: true,
+    maxFPS: 60,
+})
+
+// Load sprites
+loadSprite("boat", "boat.png", {
+  sliceX: 2,
+  sliceY: 1,
+  anims: {
+    bob: {
+      from: 0,
+      to: 1,
+      loop: true,
+    },
+    idle: 0,
+  },
+});
+loadSprite("water", "Water.png", {
+  sliceX: 2,
+  sliceY: 1,
+  anims: {
+    bob: {
+      from: 0,
+      to: 1,
+      loop: true,
+    },
+    idle: 0,
+  },
+});
+loadSprite("present", "present.png", {
+  sliceX: 2,
+  sliceY: 1,
+  anims: {
+    bob: {
+      from: 0,
+      to: 1,
+      loop: true,
+    },
+    idle: 0,
+  },
+});
+loadSprite("house", "house.png", {
+});
+// music
+loadMusic("jonglebells", "/jongle bells.mp3");
+loadMusic("move", "/water.mp3");
+loadMusic("collect", "/pickup.mp3");
+loadMusic("deliver", "/deliver.mp3");
+
+wait(1, () => {
+    const music = play("jonglebells", {
+      volume: 0.5,
+      loop: true
+  })
+})
+
+
+// Player
+const player = add([
+    sprite("boat"),
+    pos(10, height() / 2),
+    area(),
+    body(),
+    anchor("center"),
+    {
+        vx: 0,
+        vy: 0,
+        swayAmount: 0,
+        presentsCollected: 0, // Keep track of collected presents
+        baseMaxSpeed: 200,    // Store the base max speed
+        baseAcceleration: 15, // Store the base acceleration
+    },
+]);
+player.play("bob");
+
+// Constants
+function getMaxSpeed() {
+    return Math.max(1,player.baseMaxSpeed * (1 - player.presentsCollected * 0.05)); // Reduce by 5% per present
+}
+
+function getAcceleration() {
+    return Math.max( 1, player.baseAcceleration * (1 - player.presentsCollected * 0.1)); // Reduce by 10% per present
+}
+const DRAG = 0.95; // Deceleration when no key is pressed
+const DEF_COUNT = 30;
+const DEF_GRAVITY = 800;
+const DEF_AIR_DRAG = 0.9;
+const DEF_VELOCITY = [300, 600];
+const DEF_ANGULAR_VELOCITY = [-200, 200];
+const DEF_FADE = 0.3;
+const DEF_SPREAD = 20;
+const DEF_SPIN = [2, 8];
+const DEF_SATURATION = 0.7;
+const DEF_LIGHTNESS = 0.6;
+
+// globals
+let SCORE = 0;
+let timeLeft = 60; // Initial time in seconds
+let timerText;     // Text object to display the timer
+let gameEnded = false;
+
+// onload
+onLoad(() => {
+    // Create the timer text
+    timerText = add([
+        text(timeLeft.toString(), { size: 10 }),
+        anchor("right"),
+        pos(width() - 10, 10),
+        fixed(),
+        color(0, 0, 0),
+        z(100),
+        "timer"
+    ]);
+
+    // Start the timer
+    let timerInterval = setInterval(() => {
+        if (!gameEnded) {
+            timeLeft--;
+            timerText.text = timeLeft.toString();
+
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                endGame();
+            }
+        }
+    }, 1000);
+
+    // Movement functions (used by both keyboard and gamepad)
+    function movePlayerX(direction) {
+        player.vx = Math.max(
+            Math.min(
+                player.vx + getAcceleration() * (direction === "left" ? -1 : 1),
+                getMaxSpeed()
+            ),
+            -getMaxSpeed()
+        );
+        player.play("bob");
+    }
+
+    function movePlayerY(direction) {
+        player.vy = Math.max(
+            Math.min(
+                player.vy + getAcceleration() * (direction === "up" ? -1 : 1),
+                getMaxSpeed()
+            ),
+            -getMaxSpeed()
+        );
+        player.play("bob");
+    }
+
+    // const left=add([
+    //     rect(40, 40),
+    //     pos(40,height()-40),
+    //     area(),
+    //     scale(1),
+    //     anchor("center"),
+    //     color(0, 0, 0),
+    // ])
+    // left.add([text("<", {size : 10})])
+    // left.onMouseDown(() => movePlayerX("left"));
+
+    // const right=add([
+    //     rect(40, 40),
+    //     pos(40+40+40,height()-40),
+    //     area(),
+    //     scale(1),
+    //     anchor("center"),
+    //     color(0, 0, 0),
+    // ])
+    // right.add([text(">", {size : 10})])
+    // right.onClick(() => {
+    // const stop = loop(0.1, () => {
+    //     movePlayerX("right");
+    //     if (!isMouseDown()) stop();
+    // });
+// });
+    // Keyboard controls
+    onKeyDown("a", () => movePlayerX("left"));
+    onKeyDown("d", () => movePlayerX("right"));
+    onKeyDown("w", () => movePlayerY("up"));
+    onKeyDown("s", () => movePlayerY("down"));
+
+
+
+
+
+})
+
+function endGame() {
+    gameEnded = true;
+    // Perform game over actions here (e.g., display game over screen)
+    add([
+        text("finished! merry christmas!!", { size: 28 }),
+        pos(width() / 2, height() / 2),
+        anchor("center"),
+        color(255, 0, 0),
+        z(101)
+    ]);
+    // Destroy all presents
+    get("present").forEach(destroy);
+
+    // Destroy all houses
+    get("house").forEach(destroy);
+
+    // Destroy timer
+    destroy(get("timer")[0]);
+
+}
+
+
+function addConfetti(opt = {}) {
+  play("deliver", {
+      volume: 0.4,
+      loop: false
+  })
+    const sample = (s) => typeof s === "function" ? s() : s;
+    for (let i = 0; i < (opt.count ?? DEF_COUNT); i++) {
+        const p = add([
+            pos(sample(opt.pos ?? vec2(0, 0))),
+            choose([
+                rect(rand(3, 6), rand(3, 6)),
+                circle(rand(2, 5)),
+            ]),
+            color(
+                sample(
+                    opt.color
+                        ?? hsl2rgb(rand(0, 1), DEF_SATURATION, DEF_LIGHTNESS),
+                ),
+            ),
+            opacity(1),
+            lifespan(4),
+            scale(1),
+            anchor("center"),
+            rotate(rand(0, 360)),
+        ]);
+
+        const spin = rand(DEF_SPIN[0], DEF_SPIN[1]);
+        const gravity = opt.gravity ?? DEF_GRAVITY;
+        const airDrag = opt.airDrag ?? DEF_AIR_DRAG;
+        const heading = sample(opt.heading ?? 0) - 90;
+        const spread = opt.spread ?? DEF_SPREAD;
+        const head = heading + rand(-spread / 2, spread / 2);
+        const fade = opt.fade ?? DEF_FADE;
+        const vel = sample(
+            opt.velocity ?? rand(DEF_VELOCITY[0], DEF_VELOCITY[1]),
+        );
+        let velX = Math.cos(deg2rad(head)) * vel;
+        let velY = Math.sin(deg2rad(head)) * vel;
+        const velA = sample(
+            opt.angularVelocity
+                ?? rand(DEF_ANGULAR_VELOCITY[0], DEF_ANGULAR_VELOCITY[1]),
+        );
+
+        p.onUpdate(() => {
+            velY += gravity * dt();
+            p.pos.x += velX * dt();
+            p.pos.y += velY * dt();
+            p.angle += velA * dt();
+            p.opacity -= fade * dt();
+            velX *= airDrag;
+            velY *= airDrag;
+            p.scale.x = wave(-1, 1, time() * spin);
+        });
+    }
+}
+
+
+// score
+const scoretext = add([
+        text("SCORE: ", { size: 10 }),
+        pos(width(), height()),
+        anchor("left"),
+        opacity(),
+        fixed(),
+        pos(10, 10),
+        outline(2),
+        color(0,0,0),
+    ]);
+
+const score = add([
+        text("0", { size: 10 }),
+        pos(width(), height()),
+        anchor("left"),
+        opacity(),
+        fixed(),
+        pos(50, 10),
+        outline(2),
+        color(0,0,0),
+    ]);    
+
+const water = add([
+    pos(0, 0),
+    sprite("water", {
+        tiled: true,
+        width: 320,
+        height: 240,
+    }),
+    anchor("center"),
+    z(-10),
+]);
+water.play("bob")
+
+// items in the water
+function spawnPresent() {
+  if (!gameEnded){
+    add([
+        sprite('present', {anim:"bob"}),
+        pos(width(), rand(20,height()-20)),
+        anchor("topleft"),
+        move(LEFT, rand(20,60)),
+        area(),
+        body(),
+        offscreen({ destroy: true }),
+        z(-1),
+        "present"
+    ]);
+  }
+  wait(rand(0.5, 1.5), spawnPresent);
+}
+// present
+player.onCollide("present", (present) => {
+    play("collect", {
+      volume: 0.4,
+      loop: false
+  })
+    destroy(present);
+    player.presentsCollected++; // Increment collected presents
+    // Add present as a child to the player
+    player.add([
+        sprite("present"),
+        scale(1),
+        anchor("center"),
+        pos(0, -player.height + 4 - player.children.length * 10), 
+        z(10),
+        // position above player
+    ]);
+});
+/// house
+player.onCollide("house", (house) => {
+    if (player.presentsCollected > 0) {
+      addConfetti({ pos: player.pos})
+
+      // destroy presents
+      for (let i = player.children.length - 1; i >= 0; i--) {
+          const child = player.children[i];
+          // Do something with the child before destroying it
+          // Example: child.play("explode");
+          destroy(child);
+          SCORE += 1;
+          score.text = SCORE;
+      }
+    }
+    player.presentsCollected = 0; 
+});
+// polayer loop
+player.onUpdate(() => {
+  player.move(player.vx, player.vy);
+
+  player.swayAmount = player.vx * 0.05;
+
+  player.children.forEach((headpresent, index) => {
+      // Calculate sway offset for x position
+      const swayOffsetX = Math.sin(time() * 5 + index) * 0.5 + player.swayAmount * (index + 1) * 0.15; // Adjust for sway distance
+
+      headpresent.angle = player.swayAmount * (index + 1) /2;
+      headpresent.pos.x = player.width / 2 - 16 + swayOffsetX;
+      headpresent.pos.y = -player.height + 4 - (index) * 10;
+  });
+
+  // Boundary checks
+  if (player.pos.x < 0 + player.width/2) {
+      player.pos.x = 0 + player.width/2;
+      player.vx = 0; // Stop movement in that direction
+  }
+  if (player.pos.x > width() - player.width/2) {
+      player.pos.x = width() - player.width/2;
+      player.vx = 0;
+  }
+  if (player.pos.y < 0 + player.height/2) {
+      player.pos.y = 0 + player.height/2;
+      player.vy = 0;
+  }
+  if (player.pos.y > height() - player.height/2) {
+      player.pos.y = height() - player.height/2;
+      player.vy = 0;
+  }
+  // Apply drag
+   if (!isKeyDown("a") && !isKeyDown("d")) {
+      player.vx *= DRAG;
+      if (Math.abs(player.vx) < 1) player.vx = 0;
+  }
+  if (!isKeyDown("w") && !isKeyDown("s")) {
+      player.vy *= DRAG;
+      if (Math.abs(player.vy) < 1) player.vy = 0;
+  }
+  if (player.vx !== 0 && player.vy !== 0) {
+      player.play("bob");
+  //     play("move", {
+  //       volume: 0.8,
+  //     loop: false
+  // })
+  }
+  if (player.vx === 0 && player.vy === 0) {
+      player.play("bob");
+  }
+});
+
+// houses
+function spawnHouse() {
+  if (!gameEnded){
+    let house = add([
+        sprite('house'),
+        pos(width(), rand(100,height()-150)),
+        anchor("topleft"),
+        move(LEFT, 20),
+        // area(),
+        // body({isStatic: true}),
+        offscreen({ destroy: true }),
+        z(-2),
+        "house"
+    ]);
+    house.add([rect(50,90),
+          pos(60,5),
+          area(),
+          body({isStatic: true}),
+          opacity(0),
+          "house"
+          ])
+    house.add([rect(15,60),
+          pos(110,10),
+          area(),
+          body({isStatic: true}),
+          opacity(0),
+          "house"
+          ])
+    house.add([rect(10,30),
+          pos(120,60),
+          area(),
+          body({isStatic: true}),
+          opacity(0),
+          rotate(45),
+          "house"
+          ])
+    house.add([rect(20,80),
+          pos(55,5),
+          area(),
+          body({isStatic: true}),
+          opacity(0),
+          rotate(40),
+          "house"
+          ])
+      house.add([rect(40,30),
+          pos(2,60),
+          area(),
+          body({isStatic: true}),
+          opacity(0),
+          "house"
+          ])
+    house.add([rect(30,20),
+          pos(40,75),
+          area(),
+          body({isStatic: true}),
+          opacity(0),
+          "house"
+          ])
+  }
+  wait(rand(30, 35), spawnHouse);
+}
+onLoad((player) => {
+  // handleMovement("left", "x");
+  // handleMovement("right", "x");
+  // handleMovement("up", "y");
+  // handleMovement("down", "y");
+  spawnHouse();
+  spawnPresent();
+
+})
+
+// introductiton!
+    add([
+        text("COLLECT THE PRESENTS!!", { size: 10 }),
+        pos(width() / 2, height() / 2),
+        anchor("center"),
+        opacity(),
+        lifespan(1),
+        fixed(),
+        outline(2),
+        color(0,0,0),
+    ]);
+    wait(2, () => {
+      add([
+          text("& DELIVER THEM TO THE HOUSES!", { size: 15 }),
+          pos(width() / 2, height() / 2),
+          anchor("center"),
+          opacity(),
+          lifespan(2),
+          fixed(),
+          outline(2),
+          color(0,0,0),
+      ]);
+    })
+
+
+
+
+</script>
+
+</body>
+</html>
