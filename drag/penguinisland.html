@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>penguin island</title>
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  background-color: #ffc0cb; /* Pink background color */
+  display: flex; /* Enable flexbox for centering */
+  justify-content: center; /* Center horizontally */
+  align-items: center; /* Center vertically */
+  min-height: 100vh; /* Ensure full viewport height */
+  flex-direction: column; /* Stack title, controls, and canvas vertically */
+}
+
+#game-container { /* Container for title, controls and canvas */
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center content within the container */
+}
+
+#gameCanvas {
+  display: block;
+}
+
+#title {
+  font-family: "Comic Sans MS", "Comic Sans", cursive; /* Comic Sans font */
+  font-size: 2em; /* Adjust size as needed */
+  margin-bottom: 10px; /* Space between title and controls */
+}
+
+#controls {
+  text-align: center;
+  margin-bottom: 20px; /* Space between controls and canvas */
+}
+</style>
+</head>
+<body>
+
+<div id="game-container">
+  <div id="title">penguin island</div>
+  <!-- <div id="info">merge the cats!</div> -->
+  <div id="info">don't let them fall off the island</div>
+  <div id="controls">drag</div>
+  <div id="info">by valerian 2024</div>
+  <canvas id="gameCanvas"></canvas>
+</div>
+
+<script src='/kaplay3.js'></script>
+<script>
+kaplay({
+    width: 220,
+    height: 160,
+    font: "sans-serif",
+    canvas: document.querySelector("#gameCanvas"),
+    background: [ 151, 178, 205, ],
+    scale: 3,
+    crisp: true,
+    maxFPS: 60,
+    pixelDensity: 1
+})
+
+loadBean();
+loadSprite("door", "/door.png");
+loadSprite("cursor", "/cursor_default.png");
+loadSprite("island", "/island.png");
+loadSprite("grab", "/grab.png");
+loadSound("splash", "/splash.mp3");
+loadSound("nootup", "/nootup.mp3");
+loadSound("nootdown", "/nootdown.mp3");
+loadSprite("water", "Water.png", {
+  sliceX: 2,
+  sliceY: 1,
+  anims: {
+    bob: {
+      from: 0,
+      to: 1,
+      loop: true,
+      speed: 2,
+    },
+    idle: 0,
+  },
+});
+loadSprite("penguin", "penguin.png", {
+  sliceX: 2,
+  sliceY: 1,
+  anims: {
+    walk: {
+      from: 0,
+      to: 1,
+      loop: true,
+      speed: 3,
+    },
+    fall: {
+      from: 0,
+      to: 1,
+      loop: true,
+      speed:  20,
+    },
+    idle: 0,
+  },
+});
+loadBitmapFont("sink", "04b03_6x8.png", 6, 8);
+
+
+const MOUSE_VEL = 200;
+const MAX_KNOCKS = 10;
+let knocks = 0;
+let doorOpened = false;
+
+// Set the layers, the cursor will be on top of everything, "ui"
+setLayers([
+    "game",
+    "ui",
+], "game");
+
+scene("menu", () => {
+        add([
+        pos(center()),
+        color(0,0,0),
+        anchor('center'),
+        text("Penguin island", {
+            // color: [0,0,255],
+            size: 8,
+            font: "sink", // specify any font you loaded or browser built-in
+        }),
+    ])
+        add([
+        pos(center().x, center().y+20),
+        color(0,0,0),
+        anchor('center'),
+        text("press anywhere to begin", {
+            // color: [0,0,255],
+            size: 8,
+            font: "sink", // specify any font you loaded or browser built-in
+        }),
+    ])
+    onClick(() => go('game'))
+})
+
+scene("game", () => {
+    loadMusic("musik", "/musik.mp3");
+    const music = play("musik", {
+      volume: 0.01,
+      loop: true
+  })
+    const island = add([
+        sprite("island"),
+        pos(center()),
+        anchor("center"),
+        area(),
+        "island"
+    ]);
+
+    const water = add([
+        pos(0, 0),
+        sprite("water", {
+            tiled: true,
+            width: 320,
+            height: 240,
+        }),
+        anchor("center"),
+        z(-10),
+    ]);
+    water.play("bob")
+
+    // Keep track of the current draggin item
+    let curDraggin = null;
+    let gameEnd = false;
+
+    // A custom component for handling drag & drop behavior
+    function drag() {
+        // The displacement between object pos and mouse pos
+        let offset = vec2(0);
+
+        return {
+            // Name of the component
+            id: "drag",
+            // This component requires the "pos" and "area" component to work
+            require: ["pos", "area"],
+            pick() {
+                // Set the current global dragged object to this
+                curDraggin = this;
+                offset = mousePos().sub(this.pos);
+                this.trigger("drag");
+            },
+            // "update" is a lifecycle method gets called every frame the obj is in scene
+            update() {
+                if (curDraggin === this) {
+                    this.pos = mousePos().sub(offset);
+                    this.trigger("dragUpdate");
+                }
+            },
+            onDrag(action) {
+                return this.on("drag", action);
+            },
+            onDragUpdate(action) {
+                return this.on("dragUpdate", action);
+            },
+            onDragEnd(action) {
+                return this.on("dragEnd", action);
+            },
+        };
+    }
+
+    function randNoZero(x, y){
+        return randi(x/2, y/2) * 2 - 1
+    }
+
+    function targetMoveDeterminer(){
+        let x = 0
+        if (time() > 15) {
+            // increase speed if over 15s
+            // x = (time() - 15) + time()/120
+        }
+        let out = randNoZero(-5-x, 5+x)
+        // debug.log(out)
+        return out
+    }
+    function spawnPenguin() {
+        let penguin = add([
+            pos(center()),
+            sprite("penguin", {
+            }),
+            anchor("center"),
+            z(1),
+            area(),
+            drag(),
+            offscreen({ destroy: true }),
+             "penguin",
+            {
+                getShape() {
+                return new Rect(this.pos, this.width, this.height);
+            },
+                falling: false,
+                targetMove: vec2(targetMoveDeterminer(),targetMoveDeterminer()),
+                moveSpeed: 1,
+            },
+        ]);    
+        penguin.play("walk")
+        penguin.onDrag(() => {
+            // Remove the object and re-add it, so it'll be drawn on top
+            readd(penguin);
+        });
+
+        penguin.onDragUpdate(() => {
+            setCursor("grab");
+        });
+    }
+    loop(2, () => {
+        if (!gameEnd){
+            spawnPenguin()}
+        }
+        )
+
+    let selection;
+    // Check if someone is picked
+    onMousePress(() => {
+        if (curDraggin) {
+            return;
+        }
+
+        // Loop all "penguins"s in reverse, so we pick the one that is on top
+        for (const obj of get("drag").reverse()) {
+            // If mouse is pressed and mouse position is inside, we pick
+            if (obj.isHovering()) {
+                obj.pick();
+                play('nootup')
+                break;
+            }
+        }
+    });
+
+    // Drop whatever is dragged on mouse release
+    onMouseRelease(() => {
+        if (curDraggin) {
+            curDraggin.trigger("dragEnd");
+            curDraggin = null;
+            play('nootdown')
+        }
+    });
+
+    // Reset cursor to default at frame start for easier cursor management
+    onUpdate(() => setCursor("default"));
+
+    onCollide("penguin", "island", (penguin, island) => {
+        penguin.play('walk')
+        penguin.falling = false
+    });
+
+    onCollideEnd("penguin", "island", (penguin, island) => {
+        // destroy(penguin)
+        penguin.play('fall')
+        penguin.falling = true
+        wait(2, () => {
+            if (penguin.falling){
+                penguin.destroy()
+                wait(0.3, () => {gameEnd =true})
+                add([
+                    pos(width() -20, height()-20),
+                    color(0,0,0),
+                    anchor('right'),
+                    text("GAME OVER", {
+                        // color: [0,0,255],
+                        size: 8,
+                        font: "sink", // specify any font you loaded or browser built-in
+                    }),
+
+                ])
+                    play('splash')
+                    music.stop()
+                    // music = null;
+                wait(4, () => {
+                    add([
+                        pos(width()-20, height()-10),
+                        color(0,0,0),
+                        anchor('right'),
+                        text("click anywhere to retry", {
+                            // color: [0,0,255],
+                            size: 8,
+                            font: "sink", // specify any font you loaded or browser built-in
+                        }),
+                    ])
+                    onClick(() => go('menu'))
+                })
+            }
+        })
+    });
+
+    onUpdate("penguin", (penguin) => {
+        if (!penguin.falling & !gameEnd){
+            penguin.move(penguin.targetMove.x,penguin.targetMove.y)
+            penguin.z = penguin.pos.y
+        }
+
+    })
+
+    add([
+        pos(5, 5),
+        color(0,0,0),
+        text("PENGUIN COUNT:", {
+            // color: [0,0,255],
+            size: 8,
+            font: "sink", // specify any font you loaded or browser built-in
+        }),
+    ])
+
+    const score = add([
+        pos(5+85, 5),
+        color(0,0,0),
+        text("0", {
+            // color: [0,0,255],
+            size: 8,
+            font: "sink", // specify any font you loaded or browser built-in
+        }),
+    ])
+
+    function updateScore() {
+        let penguins = query({
+            include: "penguin",
+        })
+        score.text = penguins.length
+    }
+
+    loop(0.2, () => updateScore())
+
+})
+go('menu')
+</script>
+</body>
+</html>
