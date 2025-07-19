@@ -1,0 +1,51 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Happy Birthday David!</title>
+    <style>
+      body {
+        background-color: pink;
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        min-height: 100vh;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      h1 {
+        color: #ff3366;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        margin-bottom: 20px;
+        text-align: center;
+        padding: 0 10px;
+      }
+      #game-container {
+        border: 4px solid #ff3366;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        width: 95%;
+        max-width: 640px;
+        aspect-ratio: 4/3;
+        overflow: hidden;
+        position: relative;
+        margin-top: calc(20px + env(safe-area-inset-top));
+        margin-bottom: 20px;
+      }
+      #canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Happy Birthday David!</h1>
+    <div id="game-container">
+      <canvas id="canvas"></canvas>
+    </div>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
