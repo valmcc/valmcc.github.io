@@ -118,13 +118,6 @@ body{display:flex;flex-direction:column;padding:var(--safet) env(safe-area-inset
   opacity:0;pointer-events:none;transition:opacity .2s;
 }
 #zbadge.show{opacity:1}
-#vitals{
-  font-size:10px;line-height:1.6;color:var(--muted);background:var(--panel2);
-  border:1px solid var(--edge);padding:8px 10px;border-radius:10px;
-  white-space:pre-wrap;overflow-x:auto;
-}
-#safeprobe{position:absolute;left:-99px;top:0;width:1px;height:1px;
-  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 #zbadge.snap{color:var(--onaccent);background:var(--accent);border-color:var(--accent);font-weight:600}
 #selbar{
   position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
@@ -133,6 +126,34 @@ body{display:flex;flex-direction:column;padding:var(--safet) env(safe-area-inset
   backdrop-filter:blur(8px);max-width:calc(100% - 14px);
 }
 #selbar.show{display:flex}
+/* Tracing reference: while you are placing the photo this pad covers the
+   canvas and takes every pointer itself, so none of the drawing code has to
+   know the mode exists. It is gone the rest of the time. */
+#refPad{position:absolute;inset:0;z-index:4;display:none;touch-action:none;cursor:move}
+#refPad.on{display:block}
+#refBar{
+  position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
+  display:flex;gap:9px;align-items:center;padding:6px 10px;
+  background:rgba(248,248,240,.95);border:1px solid var(--edge);border-radius:14px;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  max-width:calc(100% - 14px);touch-action:auto;
+}
+#refBar span{font-size:10px;color:var(--muted);letter-spacing:.06em}
+#refBar input[type=range]{width:90px;accent-color:var(--accent)}
+#refBar button{
+  height:34px;padding:0 15px;border-radius:999px;border:0;
+  background:var(--accent);color:var(--onaccent);
+  font-family:inherit;font-size:12px;font-weight:600;letter-spacing:.04em;
+  box-shadow:0 2px 0 var(--accent-lo);
+}
+#refBar button:active{transform:translateY(2px);box-shadow:none}
+#refHint{
+  position:absolute;left:50%;top:14px;transform:translateX(-50%);
+  background:rgba(248,248,240,.94);border:1px solid var(--edge);
+  padding:5px 12px;border-radius:999px;font-size:11px;color:var(--muted);
+  white-space:nowrap;pointer-events:none;
+}
+.seg button[disabled]{opacity:.38;pointer-events:none}
 #selbar .btn{height:40px;min-width:40px;padding:0;border-radius:9px}
 #selbar .btn svg{width:19px;height:19px}
 #selbar .btn .ico{height:22px}
@@ -205,9 +226,6 @@ button{
   38%{transform:translateY(-2px)}
 }
 #tlToggle.nudge{animation:tlNudge 1.5s ease-in-out 3}
-#dockhead{display:none;align-items:center;height:18px;padding:0 3px}
-#dockhead.open{display:flex}
-#tlLabel{font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
 
 #timeline{display:none;gap:6px;align-items:stretch;margin:4px 0 7px;height:88px}
 #timeline.open{display:flex}
@@ -215,11 +233,27 @@ button{
 #tlLeft .btn{height:26px;min-width:42px;flex:1;border-radius:8px;flex-direction:row;padding:0}
 #tlLeft .btn svg{width:16px;height:16px}
 #tlLeft .btn .ico{height:17px}
-#tlStrip{
+#tlStrip,#tlStrip2{
+  position:relative;
   display:flex;gap:6px;flex:1 1 0;min-width:0;overflow-x:auto;overflow-y:hidden;
   touch-action:pan-x;scrollbar-width:none;padding:1px;
 }
-#tlStrip::-webkit-scrollbar{display:none}
+#tlStrip::-webkit-scrollbar,#tlStrip2::-webkit-scrollbar{display:none}
+/* the pro second layer rides in its own row under the main strip; the tag on
+   the left lights up when layer 2 is the one being edited */
+#timeline2{display:none;gap:6px;align-items:stretch;margin:0 0 7px;height:88px}
+#timeline2.open{display:flex}
+/* folded, the row shrinks to a slim bar: just the tag, full width */
+#timeline2.fold{height:24px}
+#timeline2.fold #tlStrip2,#timeline2.fold .l2pad{display:none}
+#timeline2.fold .l2tag{flex:1 1 auto}
+.l2tag{
+  flex:0 0 42px;display:flex;align-items:center;justify-content:center;gap:4px;
+  font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--muted);
+  border:1px dashed var(--edge);border-radius:9px;
+}
+.l2tag.on{color:var(--accent-ink);border-color:var(--accent);border-style:solid}
+.l2pad{flex:0 0 44px}
 .cel{
   flex:0 0 auto;width:52px;height:84px;border:1px solid var(--edge);border-radius:10px;
   background:var(--panel);display:flex;flex-direction:column;align-items:center;
@@ -231,7 +265,11 @@ button{
 .cel .no{position:absolute;top:2px;left:5px;font-size:8px;color:var(--muted);line-height:1}
 .cel.on .no{color:var(--accent-ink)}
 .cel .dur{font-size:9px;color:var(--ink)}
+.cel{transition:transform .16s ease}
 .cel.drag{opacity:.5;transform:scale(.93)}
+/* the shorter layer pads out with blank time so the two rows always line up */
+.cel.fill{border-style:dashed;opacity:.55;pointer-events:none;justify-content:center}
+.cel.fill .dur{color:var(--muted)}
 .cel.tune{border-color:var(--accent)}
 .cel.dup{border-color:var(--accent);border-width:2px;padding:2px}
 .cel.dup::after{
@@ -479,14 +517,17 @@ button[hidden]{display:none}
   #colors .swatch{grid-column:1}
   #colors .swatch.dual{display:none}
   #colors .swatch.solo{display:block}
+  /* a hard two-column grid: flex-wrap collapsed to one column on Windows,
+     where the scrollbar's real width ate the second column's room */
   #brushes{
     grid-column:2;grid-row:1/span 7;
-    display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;
+    display:grid;grid-template-columns:1fr 1fr;gap:6px;align-content:flex-start;
     max-height:358px;overflow-y:auto;overflow-x:hidden;
     touch-action:pan-y;-webkit-mask-image:none;mask-image:none;
     background:var(--tint);border:1px solid var(--edge);border-radius:12px;
     padding:5px;scrollbar-width:thin;scrollbar-color:var(--edge) transparent;
   }
+  #brushes .btn{min-width:0;width:100%}
   #brushes::-webkit-scrollbar{display:block;width:5px}
   #brushes::-webkit-scrollbar-thumb{background:var(--edge);border-radius:3px}
   #brushes::-webkit-scrollbar-track{background:transparent}
@@ -503,13 +544,19 @@ button[hidden]{display:none}
   <div id="hint"><b><em id="hintSquiggle"></em>jellyframe</b>Make a lovely drawing or animation and export it as a GIF to share with your friends :)<small>made with love by val · 2026</small></div>
   <div id="zbadge"></div>
   <div id="selbar"></div>
+  <div id="refPad">
+    <div id="refHint">Drag to move · pinch or scroll to resize</div>
+    <div id="refBar">
+      <span>FADE</span>
+      <input id="refAlpha" type="range" min="10" max="100" value="55" aria-label="Reference opacity">
+      <button id="refDone">OK</button>
+    </div>
+  </div>
   <div id="toast"></div>
-  <div id="safeprobe"></div>
 </div>
 
 <div id="dock">
   <button id="tlToggle" aria-label="Animation timeline"></button>
-  <div id="dockhead"><span id="tlLabel"></span></div>
   <div id="timeline">
     <div id="tlLeft">
       <button class="btn" id="tlPlay" aria-label="Play animation"></button>
@@ -522,6 +569,11 @@ button[hidden]{display:none}
       <button id="tlDup" aria-label="Duplicate this frame"></button>
       <button id="tlDel" aria-label="Delete this frame"></button>
     </div>
+  </div>
+  <div id="timeline2">
+    <button class="l2tag" id="tlTag2" aria-label="Collapse or expand layer 2">L2</button>
+    <div id="tlStrip2"></div>
+    <div class="l2pad"></div>
   </div>
 </div>
 
@@ -567,10 +619,22 @@ button[hidden]{display:none}
   <h3>Paper</h3>
   <div class="seg" id="segDoc"></div>
 
+  <h3>Reference</h3>
+  <div class="seg">
+    <button id="rPick">Choose a photo</button>
+    <button id="rMove">Position</button>
+    <button id="rDel" class="danger">Remove</button>
+  </div>
+  <input id="fRef" type="file" accept="image/*" hidden>
+  <p class="note">A photo to trace over on this frame. Goes away when you change frames, or export!</p>
+
   <h3>Touch</h3>
   <button class="tog" id="tStylus"><span class="lab">Stylus only<u>Ignore finger and palm contact</u></span><span class="knob"></span></button>
   <button class="tog" id="tPressure"><span class="lab">Pen pressure<u>Vary line weight with stylus force</u></span><span class="knob"></span></button>
   <button class="tog" id="tHaptic"><span class="lab">Haptics<u>Buzz on tool changes (Android)</u></span><span class="knob"></span></button>
+
+  <h3>Pro</h3>
+  <button class="tog" id="tPro"><span class="lab">Two layers<u>Adds second layer</u></span><span class="knob"></span></button>
 
   <h3>Save</h3>
   <div class="seg">
@@ -592,9 +656,6 @@ button[hidden]{display:none}
   <h3>Danger</h3>
   <div class="seg"><button id="sClear" class="danger">Clear this frame</button></div>
   <div class="seg"><button id="sWipe" class="danger">Delete everything</button></div>
-
-  <h3>Screen · diagnostic</h3>
-  <div id="vitals"></div>
 
   <h3>About</h3>
   <div id="about">
@@ -696,7 +757,7 @@ const S = {
   tool:'wobble', ci:0, brush:2,
   pal:0, custom:[], pair:[0,0,0], speed:2, jit:1, docI:1,
   stylusOnly:false, pressure:true, haptic:true,
-  onion:0, loop:true,
+  onion:0, loop:true, pro:false,
   hand:false,
 };
 let DOC = {w:DOCS[0].w, h:DOCS[0].h};
@@ -707,13 +768,60 @@ const MAX_UNDO = 40;
    current cel so the rest of the drawing code needs no changes.           */
 let cels = [], cur = 0;
 let strokes, redoStack, Lunder, Lline, uctx, lctx;
-let playing = false, playIdx = 0, playTick = 0;
+let playing = false, playIdx = 0, playT = 0;
+
+/* Pro mode: up to two layers, each its own cel list. The globals above always
+   alias the ACTIVE layer, so the whole drawing pipeline is layer-blind; the
+   inactive layer only matters to render, playback, export and the strip UI. */
+let docLayers = [], LI = 0;
+function syncLayer(){ if (docLayers[LI]){ docLayers[LI].cels = cels; docLayers[LI].cur = cur; } }
+function useLayer(k){
+  if (!docLayers[k]) return;
+  syncLayer();
+  LI = k;
+  cels = docLayers[k].cels;
+  useCel(docLayers[k].cur);
+}
+const proOn = () => S.pro && docLayers.length > 1;
+function ensureLayer2(){
+  syncLayer();
+  if (docLayers.length < 2)
+    docLayers.push({cels:[newCel(cels[0] ? cels[0].hold : 12)], cur:0});
+}
+function layerTotal(cs){ let t = 0; for (const c of cs) t += Math.max(1, c.hold); return t; }
+function idxAtTick(cs, t){
+  let a = 0;
+  for (let i = 0; i < cs.length; i++){ a += Math.max(1, cs[i].hold); if (t < a) return i; }
+  return -1;
+}
+const celAtTick = (cs, t) => { const i = idxAtTick(cs, t); return i < 0 ? null : cs[i]; };
+function startTick(k, i){
+  const cs = docLayers[k].cels;
+  let t = 0;
+  for (let j = 0; j < i; j++) t += Math.max(1, cs[j].hold);
+  return t;
+}
+/* the layer-0 and layer-1 cels that share the current editing moment */
+function currentPair(){
+  if (!proOn()) return {c0: cels[cur], c1: null};
+  syncLayer();
+  const t = startTick(LI, cur);
+  return {
+    c0: LI === 0 ? cels[cur] : celAtTick(docLayers[0].cels, t),
+    c1: LI === 1 ? cels[cur] : celAtTick(docLayers[1].cels, t),
+  };
+}
 const view = {s:1, tx:0, ty:0};
 let dirty = true, frameIdx = 0, lastFlip = 0;
 
 /* selection state: sel is the marquee in doc pixels; flt holds pixels that
    have been lifted out of the layers and are floating above them          */
 let sel = null, flt = null, clip = null, selDrag = null, antOff = 0;
+
+/* tracing reference: a photo shown under the art on one cel only, declared up
+   here because render() reads it — everything that drives it is one block far
+   below, next to the rest of the menu wiring */
+let ref = null, refPos = false;
 
 const stage = document.getElementById('stage');
 const cv = document.getElementById('view');
@@ -733,7 +841,14 @@ const slotOf  = ci => ci > 0 ? Math.floor((ci - 1) / 2) : -1;
 const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
 /* tools that spit particles on a timer rather than tracking movement */
 const isEmitter = t => t === 'spray' || t === 'bristle';
-const EMIT_MS = {spray: 24, bristle: 10};
+const EMIT_MS = {spray: 24, bristle: 8};
+/* Emitters only fire where the pointer is when the timer ticks, so a quick
+   drag used to land the droplets in separate clumps with paper between them.
+   Bristle walks from the last emission to the pointer instead, so the band
+   stays unbroken however fast you move; spray keeps its gaps on purpose,
+   that scatter IS the aerosol. The step is a fraction of the brush width, so
+   the overlap between emissions reads the same at every size. */
+const EMIT_STEP = {bristle: 0.66};
 
 function rng32(a){
   return function(){
@@ -765,13 +880,18 @@ function useCel(i){
   strokes = c.strokes; redoStack = c.redo;
 }
 function eachCel(fn){
-  const keep = cur;
-  for (let i = 0; i < cels.length; i++){ useCel(i); fn(cels[i], i); }
-  useCel(keep);
+  syncLayer();
+  const keepL = LI, keep = cur;
+  for (let k = 0; k < docLayers.length; k++){
+    useLayer(k);
+    for (let i = 0; i < cels.length; i++){ useCel(i); fn(cels[i], i); }
+  }
+  useLayer(keepL); useCel(keep);
 }
 function replayAllCels(){ eachCel(c => { replayAll(); c.tdirty = true; }); }
 function resizeAllCels(){
-  for (const c of cels){
+  syncLayer();
+  for (const L of docLayers) for (const c of L.cels){
     const n = newCel(c.hold);
     c.under = n.under; c.line = n.line; c.uctx = n.uctx; c.lctx = n.lctx;
     c.tdirty = true;
@@ -811,7 +931,7 @@ function newStroke(def){
   st.spacing =
     st.emit               ? 0 :
     st.scat               ? Math.max(2, base * 0.55) :
-    def.tool === 'chunk'  ? Math.max(2.5, base * 0.5) :
+    def.tool === 'chunk'  ? Math.max(3, base * 0.8) :
     def.tool === 'eraser' ? Math.max(2, base * 0.5) :
                             Math.max(2.5, base * 0.7);
   return st;
@@ -926,7 +1046,7 @@ function paintSeg(st, f, ia, ib){
   const scatMul = !st.scat ? 0 :
     d.tool === 'marker' ? 1.4 :
     d.tool === 'eraser' ? 1.6 :
-    d.tool === 'chunk'  ? 0.7 + r() * 0.8 : 1;
+    d.tool === 'chunk'  ? 0.8 + r() * 1.1 : 1;
 
   for (const c of targets(st, f)){
     c.save();
@@ -974,16 +1094,18 @@ function paintSeg(st, f, ia, ib){
         break;
       }
 
+      /* chunk (the BRUSH icon): fat paint daubs, not a line — the blobs run
+         wide in size and wander off the path so it reads nothing like PEN */
       case 'chunk': {
         const dx = B.x - A.x, dy = B.y - A.y;
         const len = Math.hypot(dx, dy);
-        const n = Math.max(1, Math.min(10, Math.ceil(len / Math.max(base * 0.35, 1.5))));
+        const n = Math.max(1, Math.min(10, Math.ceil(len / Math.max(base * 0.55, 2))));
         for (let k = 0; k <= n; k++){
           const t = k / n;
-          const rr = clamp(Math.round(base * (0.4 + r() * 0.4) * pr)|0, 0, 60);
+          const rr = clamp(Math.round(base * (0.55 + r() * 0.85) * pr)|0, 1, 60);
           stampAt(c, brush(rr, col, shape),
-            A.x + dx*t + jr(r, st.amp * 0.3),
-            A.y + dy*t + jr(r, st.amp * 0.3), rr);
+            A.x + dx*t + jr(r, st.amp * 0.3 + base * 0.16),
+            A.y + dy*t + jr(r, st.amp * 0.3 + base * 0.16), rr);
         }
         break;
       }
@@ -1079,6 +1201,8 @@ function commitFloat(){
     const pair = layerPair(f);
     for (let li = 0; li < 2; li++) blit(pair[li], flt.layers[f*2 + li], dst, flt.flipX, flt.flipY);
   }
+  // wherever a paste ends up is where the next one wants to go
+  if (flt.isPaste && clip) clip.at = {x:dst.x, y:dst.y};
   const moved = flt.isPaste || flt.flipX || flt.flipY ||
     dst.x !== src.x || dst.y !== src.y || dst.w !== src.w || dst.h !== src.h;
   if (moved){
@@ -1099,7 +1223,8 @@ function copySel(){
   if (!sel) return;
   const r = intRect(sel), layers = [];
   for (let f = 0; f < NF; f++) for (const c of layerPair(f)) layers.push(cutOut(c, r));
-  clip = {w:r.w, h:r.h, layers};
+  // `at` is where this came from, so a later paste can put it back in register
+  clip = {w:r.w, h:r.h, layers, at:{x:r.x, y:r.y}};
   refreshUI(); toast('Copied');
 }
 function clearSel(){
@@ -1115,8 +1240,14 @@ function pasteClip(){
   if (!clip) return;
   commitFloat();
   const w = clip.w, h = clip.h;
-  const x = sel ? Math.round(sel.x) : Math.round((DOC.w - w)/2);
-  const y = sel ? Math.round(sel.y) : Math.round((DOC.h - h)/2);
+  /* Paste lands back where the art was cut or copied from, so copy on one
+     frame and paste on the next puts it in register rather than in the middle
+     of the paper. A live marquee still wins — that is you pointing at a spot —
+     and dragging a paste elsewhere moves the remembered spot with it. */
+  const at = sel ? sel : (clip.at || {x:(DOC.w - w)/2, y:(DOC.h - h)/2});
+  // a remembered spot can outlive a paper resize, so keep a corner reachable
+  const x = clamp(Math.round(at.x), 8 - w, DOC.w - 8);
+  const y = clamp(Math.round(at.y), 8 - h, DOC.h - 8);
   sel = {x, y, w, h};
   flt = {src:{x, y, w, h}, layers: clip.layers.map(c => cutOut(c.getContext('2d'), {x:0,y:0,w:c.width,h:c.height})),
          flipX:false, flipY:false, isPaste:true};
@@ -1203,7 +1334,7 @@ function selCancelDrag(){
 }
 
 /* ---------------- input ---------------- */
-let live = null, liveStart = 0, sprayTimer = null, lastPtr = null;
+let live = null, liveStart = 0, sprayTimer = null, lastPtr = null, emitAt = null;
 const pointers = new Map();
 let gesture = null;
 
@@ -1227,10 +1358,22 @@ function beginStroke(e){
   addNode(live, p.x, p.y, e.pressure || 0.5);
   if (isEmitter(S.tool)){
     lastPtr = {x:p.x, y:p.y, p:e.pressure || 0.5};
+    emitAt = {x:p.x, y:p.y};
+    const step = EMIT_STEP[S.tool]
+      ? Math.max(1.2, BRUSHES[S.brush].px * EMIT_STEP[S.tool]) : 0;
     clearInterval(sprayTimer);
     sprayTimer = setInterval(() => {
       if (!live || !lastPtr) return;
-      addNode(live, lastPtr.x, lastPtr.y, lastPtr.p);
+      const d = step ? Math.hypot(lastPtr.x - emitAt.x, lastPtr.y - emitAt.y) : 0;
+      if (d > step){
+        // one emission per `step` px of travel, capped so a flick across the
+        // whole page can't stall the frame
+        const n = Math.min(48, Math.ceil(d / step));
+        const dx = lastPtr.x - emitAt.x, dy = lastPtr.y - emitAt.y;
+        for (let k = 1; k <= n; k++)
+          addNode(live, emitAt.x + dx*k/n, emitAt.y + dy*k/n, lastPtr.p);
+      } else addNode(live, lastPtr.x, lastPtr.y, lastPtr.p);
+      emitAt.x = lastPtr.x; emitAt.y = lastPtr.y;
       dirty = true;
     }, EMIT_MS[S.tool]);
   }
@@ -1255,7 +1398,7 @@ function extendStroke(e){
   dirty = true;
 }
 
-function stopSpray(){ clearInterval(sprayTimer); sprayTimer = null; lastPtr = null; }
+function stopSpray(){ clearInterval(sprayTimer); sprayTimer = null; lastPtr = null; emitAt = null; }
 
 function endStroke(){
   if (!live) return;
@@ -1469,6 +1612,27 @@ window.addEventListener('orientationchange', () => setTimeout(() => { resize(); 
 
 const WOB = [[0,0],[0.8,-0.7],[-0.7,0.6]];
 
+/* onion frames are composited through a scratch canvas so the ghost can be
+   tinted (green = the frame before) without touching the cel's own pixels */
+let onionCv = null;
+function drawOnion(j, alpha, tint){
+  if (j < 0 || j >= cels.length) return;
+  if (!onionCv) onionCv = document.createElement('canvas');
+  onionCv.width = DOC.w; onionCv.height = DOC.h;   // setting size also clears
+  const x = onionCv.getContext('2d');
+  x.imageSmoothingEnabled = false;
+  x.drawImage(cels[j].under[frameIdx], 0, 0);
+  x.drawImage(cels[j].line[frameIdx], 0, 0);
+  if (tint){
+    x.globalCompositeOperation = 'source-atop';
+    x.globalAlpha = 0.6; x.fillStyle = tint;
+    x.fillRect(0, 0, DOC.w, DOC.h);
+  }
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(onionCv, 0, 0);
+  ctx.globalAlpha = 1;
+}
+
 function render(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.imageSmoothingEnabled = false;
@@ -1481,21 +1645,57 @@ function render(){
   ctx.fillStyle = pal().bg;
   ctx.fillRect(0,0,DOC.w,DOC.h);
   ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-  const C = dispCel(), own = !playing;
-  if (own && S.onion) for (let k = S.onion; k >= 1; k--){
-    const j = cur - k;
-    if (j < 0) continue;
-    ctx.globalAlpha = k === 1 ? 0.32 : 0.15;
-    ctx.drawImage(cels[j].under[frameIdx], 0, 0);
-    ctx.drawImage(cels[j].line[frameIdx], 0, 0);
+  /* The tracing photo goes down on the paper and everything else draws over
+     it. It belongs to one cel, so this one check retires it on any move to
+     another frame or layer — none of the navigation code has to know. It is
+     never composited into playback, a GIF, a PNG or the autosave. */
+  if (ref && ref.cel !== cels[cur]) refClear();
+  if (refPos && playing) refMode(false);   // previewing ends placement, keeps the photo
+  if (ref && !playing){
+    ctx.globalAlpha = ref.a;
+    ctx.drawImage(ref.img, ref.x, ref.y, ref.w, ref.h);
+    ctx.globalAlpha = 1;
   }
-  ctx.globalAlpha = 1;
-
-  ctx.drawImage(C.under[frameIdx], 0, 0);
-  if (flt && own) blit(ctx, flt.layers[frameIdx*2], sel, flt.flipX, flt.flipY);
-  ctx.drawImage(C.line[frameIdx], 0, 0);
-  if (flt && own) blit(ctx, flt.layers[frameIdx*2 + 1], sel, flt.flipX, flt.flipY);
+  const own = !playing;
+  if (!own && proOn()){
+    // pro playback: both layers run on the same global clock
+    syncLayer();
+    const c0 = celAtTick(docLayers[0].cels, playT);
+    const c1 = celAtTick(docLayers[1].cels, playT);
+    // layer 2 is the background: it paints first, layer 1 on top
+    if (c1){ ctx.drawImage(c1.under[frameIdx], 0, 0); ctx.drawImage(c1.line[frameIdx], 0, 0); }
+    if (c0){ ctx.drawImage(c0.under[frameIdx], 0, 0); ctx.drawImage(c0.line[frameIdx], 0, 0); }
+  } else {
+    const C = dispCel();
+    let below = null, above = null;
+    if (own && proOn()){
+      const pr = currentPair();
+      below = LI === 0 ? pr.c1 : null;   // editing layer 1: layer 2 sits underneath
+      above = LI === 1 ? pr.c0 : null;   // editing layer 2: layer 1 floats on top
+    }
+    if (below){ ctx.drawImage(below.under[frameIdx], 0, 0); ctx.drawImage(below.line[frameIdx], 0, 0); }
+    if (own && S.onion){
+      // 1 = prev · 2 = prev + prev2 · 3 = prev + next
+      if (S.onion === 2) drawOnion(cur - 2, 0.16, '#2f9e5f');
+      drawOnion(cur - 1, 0.30, '#2f9e5f');          // the frame before, in green
+      if (S.onion === 3) drawOnion(cur + 1, 0.22, null);  // and the one after
+    }
+    ctx.drawImage(C.under[frameIdx], 0, 0);
+    if (flt && own) blit(ctx, flt.layers[frameIdx*2], sel, flt.flipX, flt.flipY);
+    ctx.drawImage(C.line[frameIdx], 0, 0);
+    if (flt && own) blit(ctx, flt.layers[frameIdx*2 + 1], sel, flt.flipX, flt.flipY);
+    if (above){ ctx.drawImage(above.under[frameIdx], 0, 0); ctx.drawImage(above.line[frameIdx], 0, 0); }
+  }
   ctx.restore();
+
+  if (refPos && ref){
+    ctx.save();
+    ctx.strokeStyle = 'rgba(25,200,185,.9)'; ctx.lineWidth = 2;
+    ctx.setLineDash([7, 5]);
+    ctx.strokeRect(view.tx + ref.x*view.s, view.ty + ref.y*view.s,
+                   ref.w*view.s, ref.h*view.s);
+    ctx.restore();
+  }
 
   if (!playing && S.tool === 'select' && sel && sel.w > 0 && sel.h > 0){
     const r = selScreenRect();
@@ -1545,9 +1745,7 @@ const $tl = document.getElementById('timeline');
 const $tlStrip = document.getElementById('tlStrip');
 const $tlDel = document.getElementById('tlDel');
 const $tlGhost = document.getElementById('tlGhost');
-const $dockhead = document.getElementById('dockhead');
 let tlHinted = false;
-const $tlLabel = document.getElementById('tlLabel');
 const $tlToggle = document.getElementById('tlToggle');
 const $tlPlay = document.getElementById('tlPlay');
 const $tlLoop = document.getElementById('tlLoop');
@@ -1558,8 +1756,11 @@ const holdFps = () => SPEEDS[S.speed].v || 12;
 function holdLabel(h){
   const f = holdFps();
   if (h < f) return h + (h === 1 ? ' frame' : 'f');
+  // holds are whole wiggle-frames, so the time is always a multiple of 1/fps;
+  // two decimals shows that honestly (13f @ 12fps -> 1.08s, not "1.1s")
   const sec = h / f;
-  return (sec >= 10 ? Math.round(sec) : sec.toFixed(1).replace(/\.0$/, '')) + 's';
+  return (sec >= 10 ? Math.round(sec)
+                    : sec.toFixed(2).replace(/0$/, '').replace(/\.0$/, '')) + 's';
 }
 
 function drawThumb(c){
@@ -1569,7 +1770,9 @@ function drawThumb(c){
   }
   const x = c.thumbCv.getContext('2d');
   x.imageSmoothingEnabled = false;
-  x.fillStyle = '#0e1220'; x.fillRect(0, 0, 44, 56);
+  // transparent letterbox: the cel's own cream face shows through, so the
+  // frame number on top stays readable (no dark matte around the preview)
+  x.clearRect(0, 0, 44, 56);
   const k = Math.min(44/DOC.w, 56/DOC.h);
   const w = Math.round(DOC.w*k), h = Math.round(DOC.h*k);
   const ox = Math.round((44 - w)/2), oy = Math.round((56 - h)/2);
@@ -1578,40 +1781,79 @@ function drawThumb(c){
   x.drawImage(c.line[0], ox, oy, w, h);
   c.tdirty = false;
 }
-function refreshThumbs(){ for (const c of cels) if (c.tdirty) drawThumb(c); }
+function refreshThumbs(){
+  syncLayer();
+  for (const L of docLayers) for (const c of L.cels) if (c.tdirty) drawThumb(c);
+}
 
-function tlRender(){
-  $tlLabel.textContent = tlOpen ? 'Frame ' + (cur + 1) + ' / ' + cels.length : '';
-  tlTabRender();
-  $tlPlay.innerHTML = ico(playing ? 'stop' : 'play');
-  $tlLoop.classList.toggle('on', S.loop);
-  $tlOnion.classList.toggle('on', S.onion > 0);
-  $tlOnion.innerHTML = ico('onion') + (S.onion ? '<i>' + S.onion + '</i>' : '');
-  if (!tlOpen) return;
-  // Rebuilding the strip resets scrollLeft, which would yank the view back
-  // under the finger every time a hold is retimed. Put it back, and only
-  // auto-reveal when the selected frame actually moved.
-  const keepX = $tlStrip.scrollLeft, prevCur = $tlStrip._cur;
-  $tlStrip.innerHTML = '';
-  cels.forEach((c, i) => {
+const $tl2 = document.getElementById('timeline2');
+const $tlStrip2 = document.getElementById('tlStrip2');
+const $tlTag2 = document.getElementById('tlTag2');
+/* the layer-2 row folds down to just its tag; folding it hands editing back
+   to layer 1 so the hidden layer can't be drawn on by accident */
+let tl2Fold = false;
+$tlTag2.onclick = () => {
+  tl2Fold = !tl2Fold;
+  if (tl2Fold && LI === 1) useLayer(0);
+  buzz(6); refreshUI(); tlRender(); dirty = true;
+};
+
+function buildStrip(strip, cs, k){
+  strip.innerHTML = '';
+  const active = k === LI;
+  cs.forEach((c, i) => {
     if (c.tdirty) drawThumb(c);
     const el = document.createElement('div');
-    el.className = 'cel' + (i === cur ? ' on' : '');
-    el.dataset.i = i;
+    // no selection outline mid-playback: the moving .now ring is the story then
+    el.className = 'cel' + (active && i === cur && !playing ? ' on' : '');
+    el.dataset.i = i; el.dataset.layer = k;
     const no = document.createElement('span'); no.className = 'no'; no.textContent = i + 1;
     const dur = document.createElement('span'); dur.className = 'dur'; dur.textContent = holdLabel(c.hold);
     const lvl = document.createElement('div'); lvl.className = 'lvl';
     lvl.innerHTML = '<div class="lvlfill"></div><span class="lvltx"></span>';
     el.appendChild(no); el.appendChild(c.thumbCv); el.appendChild(dur); el.appendChild(lvl);
     el.addEventListener('pointerdown', celDown);
-    $tlStrip.appendChild(el);
+    strip.appendChild(el);
   });
-  $tlStrip.scrollLeft = keepX;
-  if (prevCur !== cur){
-    const on = $tlStrip.querySelector('.cel.on');
+}
+
+function tlRender(){
+  syncLayer();
+  tlTabRender();
+  $tlPlay.innerHTML = ico(playing ? 'stop' : 'play');
+  $tlLoop.classList.toggle('on', S.loop);
+  $tlOnion.classList.toggle('on', S.onion > 0);
+  $tlOnion.innerHTML = ico('onion') +
+    (S.onion ? '<i>' + ['','prev','prev2','both'][S.onion] + '</i>' : '');
+  $tl2.classList.toggle('open', tlOpen && proOn());
+  $tl2.classList.toggle('fold', tl2Fold);
+  $tlTag2.classList.toggle('on', LI === 1);
+  $tlTag2.textContent = 'L2 ' + (tl2Fold ? '▸' : '▾');
+  if (!tlOpen) return;
+  // Rebuilding the strip resets scrollLeft, which would yank the view back
+  // under the finger every time a hold is retimed. Put it back, and only
+  // auto-reveal when the selected frame actually moved.
+  const keepX = $tlStrip.scrollLeft, keepX2 = $tlStrip2.scrollLeft, prevCur = $tlStrip._cur;
+  buildStrip($tlStrip, docLayers[0].cels, 0);
+  if (proOn() && !tl2Fold){
+    buildStrip($tlStrip2, docLayers[1].cels, 1);
+    // the layers must add up to the same run time: the shorter one shows the
+    // remainder as an explicit blank filler
+    const t0 = layerTotal(docLayers[0].cels), t1 = layerTotal(docLayers[1].cels);
+    if (t0 !== t1){
+      const el = document.createElement('div');
+      el.className = 'cel fill';
+      el.innerHTML = '<span class="dur">+' + holdLabel(Math.abs(t0 - t1)) + '</span>';
+      (t0 < t1 ? $tlStrip : $tlStrip2).appendChild(el);
+    }
+  } else $tlStrip2.innerHTML = '';
+  $tlStrip.scrollLeft = keepX; $tlStrip2.scrollLeft = keepX2;
+  const curKey = cur + LI * 1000;
+  if (prevCur !== curKey){
+    const on = (LI ? $tlStrip2 : $tlStrip).querySelector('.cel.on');
     if (on) on.scrollIntoView({inline:'nearest', block:'nearest'});
   }
-  $tlStrip._cur = cur;
+  $tlStrip._cur = curKey;
   markPlaying();
   placeDurTip();          // the strip was rebuilt; re-aim at the current cel
 }
@@ -1647,36 +1889,50 @@ function removeCel(i){
        vertical drag retimes the hold (also while playing), and a long press
        lifts the frame — then drag to reorder, keep holding for a copy, or
        drop it on the bin to delete --- */
-const stripMax = () => Math.max(0, $tlStrip.scrollWidth - $tlStrip.clientWidth);
-function tlScrollTo(x){ $tlStrip.scrollLeft = clamp(x, 0, stripMax()); }
+const stripMax = s => Math.max(0, s.scrollWidth - s.clientWidth);
+function tlScrollTo(s, x){ s.scrollLeft = clamp(x, 0, stripMax(s)); }
 let tlFling = null, tlEdge = null;
 function stopFling(){ if (tlFling) cancelAnimationFrame(tlFling); tlFling = null; }
-function flingStrip(v){
+function flingStrip(s, v){
   let vel = v * 15;                                 // px/ms -> px/frame
   if (Math.abs(vel) < 0.7) return;
   const step = () => {
-    const before = $tlStrip.scrollLeft;
-    tlScrollTo(before + vel);
+    const before = s.scrollLeft;
+    tlScrollTo(s, before + vel);
     vel *= 0.94;
-    tlFling = (Math.abs(vel) > 0.4 && $tlStrip.scrollLeft !== before)
+    tlFling = (Math.abs(vel) > 0.4 && s.scrollLeft !== before)
       ? requestAnimationFrame(step) : null;
   };
   tlFling = requestAnimationFrame(step);
 }
 /* dragging a lifted frame past either end walks the strip along */
 let edgeV = 0;
-function edgeScroll(clientX){
-  const r = $tlStrip.getBoundingClientRect(), zone = 44;
+function edgeScroll(s, clientX){
+  const r = s.getBoundingClientRect(), zone = 44;
   if (clientX < r.left + zone) edgeV = -(1 - (clientX - r.left)/zone) * 14;
   else if (clientX > r.right - zone) edgeV = (1 - (r.right - clientX)/zone) * 14;
   else edgeV = 0;
   if (!edgeV){ stopEdge(); return; }
   if (tlEdge) return;
   const step = () => {
-    tlScrollTo($tlStrip.scrollLeft + edgeV);
+    tlScrollTo(s, s.scrollLeft + edgeV);
     tlEdge = edgeV ? requestAnimationFrame(step) : null;
   };
   tlEdge = requestAnimationFrame(step);
+}
+/* while a lifted frame hovers, the neighbours of the drop slot ease apart */
+function nudgeGap(strip, ti, skip){
+  const boxes = strip.children;
+  for (let i = 0; i < boxes.length; i++){
+    const b = boxes[i];
+    if (b === skip) continue;      // the lifted cel keeps its own transform
+    b.style.transform = i === ti - 1 ? 'translateX(-7px)'
+                      : i === ti     ? 'translateX(7px)' : '';
+  }
+}
+function clearGap(){
+  for (const s of [$tlStrip, $tlStrip2])
+    for (const b of s.children) b.style.transform = '';
 }
 function stopEdge(){ if (tlEdge) cancelAnimationFrame(tlEdge); tlEdge = null; edgeV = 0; }
 function moveGhost(x, y){ $tlGhost.style.left = x + 'px'; $tlGhost.style.top = y + 'px'; }
@@ -1731,10 +1987,19 @@ function celDown(e){
   const el = e.currentTarget;
   el.setPointerCapture(e.pointerId);
   stopFling();
+  const k = +el.dataset.layer || 0;
+  const strip = k ? $tlStrip2 : $tlStrip;
+  const switched = k !== LI;
+  if (switched){
+    // touching the other layer's row makes it the active layer; the visual
+    // refresh waits for pointerup so the strip isn't rebuilt mid-gesture
+    commitFloat(); sel = null; selDrag = null;
+    useLayer(k);
+  }
   press = {
-    el, i: +el.dataset.i, x0: e.clientX, y0: e.clientY,
+    el, i: +el.dataset.i, k, strip, switched, x0: e.clientX, y0: e.clientY,
     hold0: cels[+el.dataset.i].hold, mode: null, dup: false,
-    sl0: $tlStrip.scrollLeft, lx: e.clientX, lt: performance.now(), v: 0,
+    sl0: strip.scrollLeft, lx: e.clientX, lt: performance.now(), v: 0,
     timer: null, timer2: null,
   };
   // reordering shuffles indices, so it stays off while frames are playing.
@@ -1786,11 +2051,12 @@ function celMove(e){
     const now = performance.now(), dt = now - press.lt;
     if (dt > 0) press.v = (press.lx - e.clientX) / dt;
     press.lx = e.clientX; press.lt = now;
-    tlScrollTo(press.sl0 - dx);
+    tlScrollTo(press.strip, press.sl0 - dx);
   } else if (press.mode === 'order'){
     if (Math.abs(dx) > 6 || Math.abs(dy) > 6) clearTimeout(press.timer2);
     moveGhost(e.clientX, e.clientY);
-    edgeScroll(e.clientX);
+    edgeScroll(press.strip, e.clientX);
+    nudgeGap(press.strip, tlTargetIndex(press.strip, e.clientX), press.el);
     const r = $tlDel.getBoundingClientRect();
     const over = e.clientX >= r.left - 6 && e.clientX <= r.right + 6 &&
                  e.clientY >= r.top - 10 && e.clientY <= r.bottom + 10;
@@ -1801,8 +2067,8 @@ function celMove(e){
 function celUp(e){
   if (!press) return;
   clearTimeout(press.timer); clearTimeout(press.timer2);
-  stopEdge();
-  const {el, i, mode, dup, v} = press;
+  stopEdge(); clearGap();
+  const {el, i, mode, dup, v, strip, switched} = press;
   el.removeEventListener('pointermove', celMove);
   el.removeEventListener('pointerup', celUp);
   el.removeEventListener('pointercancel', celUp);
@@ -1812,20 +2078,25 @@ function celUp(e){
   press = null;
 
   el.classList.remove('dup', 'drag', 'tune');
-  if (mode === 'scroll'){ flingStrip(v); return; }
+  if (mode === 'scroll'){
+    flingStrip(strip, v);
+    if (switched){ refreshUI(); tlRender(); queueSave(); dirty = true; }
+    return;
+  }
   if (!mode){
     // mid-playback a tap re-cues rather than jumping the editing frame
     if (playing){
-      playIdx = i; playTick = 0; markPlaying(); buzz(6);
-      $tlLabel.textContent = 'Playing ' + (i + 1) + ' / ' + cels.length;
+      playT = startTick(LI, i); playIdx = i; markPlaying(); tlTabRender(); buzz(6);
       dirty = true;
+    } else if (switched && i === cur){
+      refreshUI(); tlRender(); queueSave(); dirty = true;
     } else gotoCel(i);
     return;
   }
-  if (mode === 'time'){ tlRender(); return; }
+  if (mode === 'time'){ if (switched) refreshUI(); tlRender(); if (switched){ queueSave(); dirty = true; } return; }
 
   if (binHot){ removeCel(i); return; }
-  let ti = tlTargetIndex(e.clientX);
+  let ti = tlTargetIndex(strip, e.clientX);
   commitFloat(); sel = null;
   if (dup){
     const copy = dupCel(cels[i]);
@@ -1859,34 +2130,42 @@ function showGhost(i, isCopy){
   $tlGhost.classList.add('show');
 }
 
-function tlTargetIndex(clientX){
-  const boxes = [...$tlStrip.children];
-  for (let i = 0; i < boxes.length; i++){
-    const r = boxes[i].getBoundingClientRect();
-    if (clientX < r.left + r.width/2) return i;
-  }
+function tlTargetIndex(strip, clientX){
+  // layout positions, not screen rects: the ease-apart nudge transforms the
+  // cels visually, and reading those back would make the target index jitter
+  const r = strip.getBoundingClientRect();
+  const sx = clientX - r.left + strip.scrollLeft;
+  const boxes = [...strip.children].filter(b => !b.classList.contains('fill'));
+  for (let i = 0; i < boxes.length; i++)
+    if (sx < boxes[i].offsetLeft + boxes[i].offsetWidth/2) return i;
   return boxes.length;
 }
 
 function markPlaying(){
   if (!tlOpen) return;
-  const box = $tlStrip.children;
-  for (let i = 0; i < box.length; i++)
-    box[i].classList.toggle('now', playing && i === playIdx);
+  syncLayer();
+  const mark = (strip, cs) => {
+    const idx = playing ? idxAtTick(cs, playT) : -1;
+    const box = strip.children;
+    for (let i = 0; i < box.length; i++)
+      box[i].classList.toggle('now', playing && i === idx);
+  };
+  mark($tlStrip, docLayers[0].cels);
+  if (proOn()) mark($tlStrip2, docLayers[1].cels);
 }
 
 function advancePlay(){
-  playTick++;
-  if (playTick < Math.max(1, cels[playIdx].hold)) return;
-  playTick = 0;
-  playIdx++;
-  if (playIdx >= cels.length){
-    if (S.loop) playIdx = 0;
-    else { playing = false; playIdx = cur; tlRender(); }
+  syncLayer();
+  playT++;
+  const len = proOn()
+    ? Math.max(layerTotal(docLayers[0].cels), layerTotal(docLayers[1].cels))
+    : layerTotal(cels);
+  if (playT >= len){
+    if (S.loop) playT = 0;
+    else { playing = false; playT = 0; playIdx = cur; tlRender(); dirty = true; return; }
   }
-  $tlLabel.textContent = playing
-    ? 'Playing ' + (playIdx + 1) + ' / ' + cels.length
-    : 'Frame ' + (cur + 1) + ' / ' + cels.length;
+  playIdx = idxAtTick(cels, playT);
+  tlTabRender();
   markPlaying();
   dirty = true;
 }
@@ -1894,7 +2173,7 @@ function togglePlay(){
   commitFloat(); sel = null;
   playing = !playing;
   if (playing) hideDurTip();
-  if (playing){ playIdx = cur; playTick = 0; }
+  if (playing){ syncLayer(); playT = startTick(LI, cur); playIdx = cur; }
   refreshUI(); tlRender(); dirty = true;
 }
 
@@ -1907,8 +2186,13 @@ function togglePlay(){
   sq.style.setProperty('--i', 'url(' + PNG.wiggle[1] + ')');
 }
 function tlTabRender(){
+  // the tab carries the frame readout (e.g. 2/5) so the timeline needs no
+  // header row of its own — closed, it just shows how many frames exist
+  const badge = tlOpen
+    ? (playing ? (playIdx >= 0 ? playIdx + 1 : '·') : cur + 1) + '/' + cels.length
+    : (cels.length > 1 ? cels.length : '');
   $tlToggle.innerHTML = ico('animate')
-    + (cels.length > 1 ? '<i>' + cels.length + '</i>' : '')
+    + (badge !== '' ? '<i>' + badge + '</i>' : '')
     + ico('chev').replace('class="ico"', 'class="ico chev"');
 }
 tlTabRender();
@@ -1921,7 +2205,6 @@ $tlToggle.onclick = () => {
   $tl.classList.toggle('open', tlOpen);
   $tlToggle.classList.toggle('open', tlOpen);
   $tlToggle.classList.remove('nudge');
-  $dockhead.classList.toggle('open', tlOpen);
   buzz(6); tlRender();
   if (tlOpen && !tlHinted){ tlHinted = true; toast('Swipe to scroll · hold a frame to reorder'); }
   if (tlOpen) setTimeout(showDurTip, 260); else hideDurTip();
@@ -1930,7 +2213,7 @@ $tlToggle.onclick = () => {
 $tlPlay.onclick = () => { togglePlay(); buzz(8); };
 $tlLoop.innerHTML = ico('loop');
 $tlLoop.onclick = () => { S.loop = !S.loop; buzz(6); tlRender(); queueSave(); };
-$tlOnion.onclick = () => { S.onion = (S.onion + 1) % 3; buzz(6); tlRender(); queueSave(); dirty = true; };
+$tlOnion.onclick = () => { S.onion = (S.onion + 1) % 4; buzz(6); tlRender(); queueSave(); dirty = true; };
 document.getElementById('tlAdd').onclick = () => { addCel(); buzz(8); };
 const $tlDup = document.getElementById('tlDup');
 $tlDup.innerHTML = ico('copy');
@@ -2142,7 +2425,7 @@ function refreshUI(){
 
 /* ---------------- sheet ---------------- */
 const sheet = document.getElementById('sheet'), scrim = document.getElementById('scrim');
-function openSheet(){ hideDurTip(); sheet.classList.add('open'); scrim.classList.add('open'); showVitals(); }
+function openSheet(){ hideDurTip(); sheet.classList.add('open'); scrim.classList.add('open'); refSync(); }
 function closeSheet(){ sheet.classList.remove('open'); scrim.classList.remove('open'); resetClear(); }
 scrim.onclick = closeSheet;
 document.getElementById('sheetDone').onclick = () => { closeSheet(); buzz(6); };
@@ -2281,6 +2564,7 @@ function syncSheet(){
   const mark = (id, i) =>
     [...document.getElementById(id).children].forEach((x, j) => x.classList.toggle('on', j === i));
   mark('segSpeed', S.speed); mark('segJit', S.jit); mark('segDoc', S.docI);
+  syncPro();
   peClose(); buildPalRow();
 }
 
@@ -2293,6 +2577,140 @@ function bindTog(id, key){
 bindTog('tStylus','stylusOnly');
 bindTog('tPressure','pressure');
 bindTog('tHaptic','haptic');
+
+/* pro: a second layer row in the timeline (two layers max). Turning it off
+   keeps the layer-2 drawing around — it just stops rendering — so flipping
+   the switch is never destructive. */
+const $tPro = document.getElementById('tPro');
+function syncPro(){ $tPro.classList.toggle('on', !!S.pro); }
+$tPro.onclick = () => {
+  S.pro = !S.pro;
+  if (S.pro) ensureLayer2();
+  else if (LI === 1) useLayer(0);
+  syncPro(); buzz(6);
+  refreshUI(); tlRender(); queueSave(); dirty = true;
+  if (S.pro && !tlOpen) toast('Layer 2 added — open the ANIMATE tab to see it');
+};
+syncPro();
+
+/* ---------------- tracing reference ----------------
+   A photo to draw over, living entirely in this block. While you place it,
+   #refPad covers the canvas and handles its own drags and pinches, so the
+   drawing, selection and gesture code never sees the mode at all. render()
+   paints it under the artwork and drops it when you leave the cel; nothing
+   else — playback, export, autosave — ever looks at it.               */
+const $refPad = document.getElementById('refPad');
+const $refAlpha = document.getElementById('refAlpha');
+const $rMove = document.getElementById('rMove');
+const $rDel = document.getElementById('rDel');
+const $fRef = document.getElementById('fRef');
+
+function refSync(){
+  $rMove.disabled = !ref;
+  $rDel.disabled = !ref;
+}
+function refMode(on){
+  refPos = !!(on && ref);
+  $refPad.classList.toggle('on', refPos);
+  // the selection bar lives at the same spot and is unreachable under the pad
+  $selbar.style.display = refPos ? 'none' : '';
+  dirty = true;
+}
+function refClear(){
+  if (ref && ref.url) URL.revokeObjectURL(ref.url);
+  ref = null; refMode(false); refSync(); dirty = true;
+}
+function refLoad(file){
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    refClear();
+    // dropped in at "contain" size, so the whole photo is there to work with
+    const k = Math.min(DOC.w / img.width, DOC.h / img.height);
+    const w = img.width * k, h = img.height * k;
+    ref = {img, url, w, h, x:(DOC.w - w)/2, y:(DOC.h - h)/2,
+           a: $refAlpha.value / 100, cel: cels[cur]};
+    if (playing) togglePlay();
+    closeSheet(); refSync(); refMode(true);
+    document.getElementById('hint').style.opacity = 0;
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); toast('That image would not open'); };
+  img.src = url;
+}
+
+document.getElementById('rPick').onclick = () => $fRef.click();
+$fRef.onchange = e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';                       // so the same photo can be picked twice
+  if (f) refLoad(f);
+};
+$rMove.onclick = () => { if (ref){ closeSheet(); refMode(true); buzz(6); } };
+$rDel.onclick = () => { refClear(); buzz(10); toast('Reference removed'); };
+document.getElementById('refDone').onclick = () => { refMode(false); buzz(8); };
+$refAlpha.oninput = () => { if (ref){ ref.a = $refAlpha.value / 100; dirty = true; } };
+
+/* drag to move, pinch (or wheel) to resize — all in doc pixels, so the photo
+   stays put relative to the paper when you pan or zoom the canvas itself */
+const refPts = new Map();
+let refPinch = null;
+const refTwo = () => {
+  const [a, b] = [...refPts.values()];
+  return {d: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+          mx: (a.x + b.x)/2, my: (a.y + b.y)/2};
+};
+const refDocPt = (cx, cy) => {
+  const r = stage.getBoundingClientRect();
+  return {x: (cx - r.left - view.tx)/view.s, y: (cy - r.top - view.ty)/view.s};
+};
+function refScale(k, cx, cy){
+  const c = refDocPt(cx, cy);
+  ref.w *= k; ref.h *= k;
+  ref.x = c.x + (ref.x - c.x)*k;
+  ref.y = c.y + (ref.y - c.y)*k;
+  dirty = true;
+}
+
+$refPad.addEventListener('pointerdown', e => {
+  // the pad sits inside #stage, so every one of these would otherwise bubble
+  // down to the drawing handlers and start a stroke under the photo
+  e.stopPropagation();
+  if (e.target.closest('#refBar')) return;      // the OK button and slider are their own
+  $refPad.setPointerCapture(e.pointerId);
+  refPts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if (refPts.size === 2 && ref)
+    refPinch = Object.assign(refTwo(), {w:ref.w, h:ref.h, x:ref.x, y:ref.y});
+  e.preventDefault();
+});
+$refPad.addEventListener('pointermove', e => {
+  e.stopPropagation();
+  const p = refPts.get(e.pointerId);
+  if (!p || !ref) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y;
+  p.x = e.clientX; p.y = e.clientY;
+  if (refPts.size >= 2 && refPinch){
+    const g = refTwo(), k = clamp(g.d / refPinch.d, 0.02, 50);
+    const a = refDocPt(refPinch.mx, refPinch.my), b = refDocPt(g.mx, g.my);
+    ref.w = refPinch.w * k; ref.h = refPinch.h * k;
+    ref.x = b.x + (refPinch.x - a.x) * k;
+    ref.y = b.y + (refPinch.y - a.y) * k;
+  } else {
+    ref.x += dx / view.s; ref.y += dy / view.s;
+  }
+  dirty = true; e.preventDefault();
+});
+function refUp(e){
+  e.stopPropagation();
+  refPts.delete(e.pointerId);
+  if (refPts.size < 2) refPinch = null;
+}
+$refPad.addEventListener('pointerup', refUp);
+$refPad.addEventListener('pointercancel', refUp);
+$refPad.addEventListener('wheel', e => {
+  if (!ref) return;
+  e.preventDefault(); e.stopPropagation();     // or the canvas would zoom too
+  refScale(clamp(Math.exp(-e.deltaY * 0.002), 0.5, 2), e.clientX, e.clientY);
+}, {passive:false});
+refSync();
 
 /* two-tap confirm — sandboxed frames swallow window.confirm() */
 const armedBtns = [];
@@ -2328,8 +2746,10 @@ armButton('sWipe', 'Delete everything',
   () => (cels.length > 1 || strokes.length) ? true : (toast('Nothing to delete'), false),
   () => {
     live = null; flt = null; sel = null; stopSpray(); playing = false;
-    cels = [newCel(cels[0] ? cels[0].hold : 12)];
-    useCel(0);
+    const h = cels[0] ? cels[0].hold : 12;
+    docLayers = [{cels:[newCel(h)], cur:0}];
+    if (S.pro) docLayers.push({cels:[newCel(h)], cur:0});
+    LI = 0; cels = docLayers[0].cels; useCel(0);
     dirty = true;
     refreshActions(); tlRender(); queueSave(); closeSheet();
     toast('Everything deleted');
@@ -2412,21 +2832,23 @@ function gifComments(buf){
 }
 
 /* ---------------- export ---------------- */
-function flatten(cel, f, scale){
+function flattenPair(c0, c1, f, scale){
   const w = DOC.w * scale, h = DOC.h * scale;
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const x = c.getContext('2d');
   x.imageSmoothingEnabled = false;
   x.fillStyle = pal().bg; x.fillRect(0,0,w,h);
-  x.drawImage(cel.under[f], 0, 0, w, h);
-  x.drawImage(cel.line[f], 0, 0, w, h);
+  // layer 2 (c1) is the background layer: it goes down first, layer 1 on top
+  if (c1){ x.drawImage(c1.under[f], 0, 0, w, h); x.drawImage(c1.line[f], 0, 0, w, h); }
+  if (c0){ x.drawImage(c0.under[f], 0, 0, w, h); x.drawImage(c0.line[f], 0, 0, w, h); }
   return c;
 }
 const stamp = () => 'jellyframe-' + Date.now().toString(36);
 
 document.getElementById('sPng').onclick = () => {
   commitFloat();
-  flatten(cels[cur], frameIdx, 2).toBlob(b => download(b, stamp()+'.png'), 'image/png');
+  const pr = currentPair();
+  flattenPair(pr.c0, pr.c1, frameIdx, 2).toBlob(b => download(b, stamp()+'.png'), 'image/png');
   closeSheet(); toast('Saved a still frame');
 };
 document.getElementById('sGif').onclick = async () => {
@@ -2585,27 +3007,32 @@ function makeGif(embed){
     cache.set(key, best); return best;
   };
 
-  /* Build the playback order across every cel. A cel held for three seconds
-     needs three seconds of wiggle, so frames repeat — but only cels*3 images
-     are ever distinct, and their LZW output is cached and re-emitted.     */
+  /* Build the playback order tick by tick over the whole timeline (both
+     layers, when pro is on — they share one clock, the shorter one running
+     blank past its end). A cel held for three seconds needs three seconds of
+     wiggle, so frames repeat — but only a few images are ever distinct, and
+     their LZW output is cached and re-emitted.                            */
   const wig = SPEEDS[S.speed].v > 0;
   const CAP = 300;
-  const raw = cels.reduce((a, c) => a + Math.max(1, c.hold), 0);
-  const shrink = raw > CAP ? CAP / raw : 1;
+  syncLayer();
+  const l0 = docLayers[0].cels, l1 = proOn() ? docLayers[1].cels : null;
+  const total = Math.max(layerTotal(l0), l1 ? layerTotal(l1) : 0);
+  const n = Math.min(total, CAP);
   const seq = [];
-  let tick = 0;
-  cels.forEach((c, ci) => {
-    const n = Math.max(1, Math.round(Math.max(1, c.hold) * shrink));
-    for (let k = 0; k < n; k++) seq.push({ci, f: wig ? (tick++ % NF) : 0});
-  });
-  if (shrink < 1) toast('Timeline trimmed to fit the GIF');
+  for (let k = 0; k < n; k++){
+    const tick = total > CAP ? Math.floor(k * total / CAP) : k;
+    seq.push({i0: idxAtTick(l0, tick), i1: l1 ? idxAtTick(l1, tick) : -1,
+              f: wig ? (k % NF) : 0});
+  }
+  if (total > CAP) toast('Timeline trimmed to fit the GIF');
 
   const lzwCache = new Map();
   const encoded = e => {
-    const key = e.ci + ':' + e.f;
+    const key = e.i0 + ':' + e.i1 + ':' + e.f;
     let v = lzwCache.get(key);
     if (v) return v;
-    const d = flatten(cels[e.ci], e.f, 1).getContext('2d').getImageData(0,0,w,h).data;
+    const d = flattenPair(l0[e.i0] || null, e.i1 >= 0 ? l1[e.i1] : null, e.f, 1)
+      .getContext('2d').getImageData(0,0,w,h).data;
     const idx = new Uint8Array(w*h);
     for (let i = 0, j = 0; i < idx.length; i++, j += 4) idx[i] = nearest(d[j], d[j+1], d[j+2]);
     v = lzw(idx);
@@ -2732,12 +3159,20 @@ const imgToCanvas = url => new Promise(res => {
 });
 
 function docObject(){
-  return {
+  syncLayer();
+  const serialCels = cs => cs.map(c => ({h:c.hold, st: c.strokes.map(serialStroke)}));
+  const o = {
     v:5, pal:S.pal, cp:S.custom, pr:S.pair, docI:S.docI, speed:S.speed, jit:S.jit,
     tool:S.tool, ci:S.ci, brush:S.brush,
-    cur, onion:S.onion, loop:S.loop?1:0,
-    cels: cels.map(c => ({h:c.hold, st: c.strokes.map(serialStroke)})),
+    cur: docLayers[0].cur, onion:S.onion, loop:S.loop?1:0,
+    cels: serialCels(docLayers[0].cels),
   };
+  if (docLayers[1]){
+    o.pro = S.pro ? 1 : 0; o.li = LI;
+    o.cels2 = serialCels(docLayers[1].cels);
+    o.cur2 = docLayers[1].cur;
+  }
+  return o;
 }
 
 async function save(){
@@ -2770,16 +3205,32 @@ async function applyDoc(d){
   S.pair = Array.isArray(d.pr) && d.pr.length === PAIRS ? d.pr.map(v => v ? 1 : 0) : [0,0,0];
   if (S.ci > 0) S.pair[slotOf(S.ci)] = (S.ci - 1) % 2;   // the swatch must show what is selected
   S.onion = d.onion ?? 0; S.loop = d.loop !== 0;
+  S.pro = !!d.pro;
   DOC = {w:DOCS[S.docI].w, h:DOCS[S.docI].h};
-  const list = d.cels && d.cels.length ? d.cels : [{h:12, st:[]}];
-  cels = list.map(c => newCel(c.h));
-  let any = false;
-  for (let i = 0; i < cels.length; i++){
-    useCel(i);
-    cels[i].strokes = await loadStrokes(list[i].st);
-    if (cels[i].strokes.length) any = true;
+  const loadLayer = async list => {
+    const cs = list.map(c => newCel(c.h));
+    cels = cs;                    // useCel/loadStrokes paint into these
+    let any = false;
+    for (let i = 0; i < cs.length; i++){
+      useCel(i);
+      cs[i].strokes = await loadStrokes(list[i].st);
+      if (cs[i].strokes.length) any = true;
+    }
+    return {cs, any};
+  };
+  const a = await loadLayer(d.cels && d.cels.length ? d.cels : [{h:12, st:[]}]);
+  docLayers = [{cels: a.cs, cur: Math.min(d.cur ?? 0, a.cs.length - 1)}];
+  let any = a.any;
+  if (d.cels2 && d.cels2.length){
+    const b = await loadLayer(d.cels2);
+    docLayers.push({cels: b.cs, cur: Math.min(d.cur2 ?? 0, b.cs.length - 1)});
+    any = any || b.any;
+  } else if (S.pro){
+    docLayers.push({cels:[newCel(12)], cur:0});
   }
-  useCel(Math.min(d.cur ?? 0, cels.length - 1));
+  LI = clamp(d.li ?? 0, 0, docLayers.length - 1);
+  cels = docLayers[LI].cels;
+  useCel(docLayers[LI].cur);
   return any;
 }
 
@@ -2794,34 +3245,6 @@ async function load(){
   } catch (e){ return false; }
 }
 
-/* ---------------- geometry readout ----------------
-   Triple-tap the frame bar to show what the viewport actually is. Standalone
-   iOS lays itself out differently from Safari and there is no way to see the
-   numbers from here. */
-const $vitals = document.getElementById('vitals');
-const $safeprobe = document.getElementById('safeprobe');
-function showVitals(){
-  const sp = getComputedStyle($safeprobe);
-  // the bottom bar is #ctrl in portrait and #dock in the wide layout
-  const dr = document.getElementById('dock').getBoundingClientRect();
-  const cr = document.getElementById('ctrl').getBoundingClientRect();
-  const d = dr.bottom >= cr.bottom ? dr : cr;
-  const vv = window.visualViewport;
-  $vitals.textContent = [
-    'standalone ' + (navigator.standalone === true) +
-      ' / display-mode ' + matchMedia('(display-mode: standalone)').matches,
-    'inner ' + innerWidth + 'x' + innerHeight + '   client ' +
-      document.documentElement.clientWidth + 'x' + document.documentElement.clientHeight,
-    'visual ' + (vv ? Math.round(vv.width) + 'x' + Math.round(vv.height) + ' @' + Math.round(vv.offsetTop) : 'n/a') +
-      '   screen ' + screen.width + 'x' + screen.height,
-    'safe T' + sp.paddingTop + ' R' + sp.paddingRight + ' B' + sp.paddingBottom + ' L' + sp.paddingLeft,
-    'dock top ' + Math.round(d.top) + ' bottom ' + Math.round(d.bottom) +
-      '   gap below ' + Math.round(innerHeight - d.bottom),
-    'body pb ' + getComputedStyle(document.body).paddingBottom +
-      '   ctrl pb ' + getComputedStyle(document.getElementById('ctrl')).paddingBottom,
-  ].join('\n');
-}
-addEventListener('resize', () => { if (sheet.classList.contains('open')) showVitals(); });
 
 /* ---------------- keyboard ---------------- */
 addEventListener('keydown', e => {
@@ -2837,15 +3260,17 @@ addEventListener('keydown', e => {
   if (e.key === 'p'){ togglePlay(); }
   if (e.key === ',' && cur > 0) gotoCel(cur - 1);
   if (e.key === '.' && cur < cels.length - 1) gotoCel(cur + 1);
-  if (e.key === 'Escape'){ closeSheet(); if (sel) deselect(); }
+  if (e.key === 'Escape'){ closeSheet(); if (refPos) refMode(false); if (sel) deselect(); }
 });
 
 /* ---------------- boot ---------------- */
 (async function init(){
   DOC = {w:DOCS[S.docI].w, h:DOCS[S.docI].h};
-  cels = [newCel(12)]; useCel(0);
+  docLayers = [{cels:[newCel(12)], cur:0}];
+  LI = 0; cels = docLayers[0].cels; useCel(0);
 
   const restored = await load();
+  syncPro();
 
   buildColors();
   buildSeg('segSpeed', SPEEDS, ()=>S.speed, i => { S.speed = i; });
