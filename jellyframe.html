@@ -862,6 +862,27 @@ const jr = (r, a) => (r() * 2 - 1) * a;
 
 /* ---------------- layers ---------------- */
 function newCel(hold){
+  return {under:null, line:null, uctx:null, lctx:null, strokes:[], redo:[],
+          hold: hold || 12, thumbCv:null, tdirty:true, sc:null, use:0};
+}
+
+/* ---------------- raster pool ----------------
+   A cel's pixels are derived data — `strokes` is the source of truth and
+   replayAll() rebuilds them exactly — but every cel used to hold its six
+   full-size canvases (NF frames x under+line) for the whole session. At the
+   Square paper size that is ~8MB a cel, and iOS caps total canvas backing
+   store per tab at a couple of hundred MB, so a few dozen frames got the tab
+   jettisoned and reloaded mid-drawing.
+
+   So only the cels being LOOKED AT keep pixels. The rest are vectors plus a
+   cached thumbnail, and rasterise on demand. The budget is expressed in bytes
+   rather than frames so it holds at any paper size.                       */
+const RASTER_BUDGET = 80 << 20;
+const celBytes = () => NF * 2 * DOC.w * DOC.h * 4;
+const poolMax = () => clamp(Math.floor(RASTER_BUDGET / celBytes()), 8, 24);
+let resident = [], poolTick = 0, aliased = null;
+
+function allocRaster(c){
   const under = [], line = [], uc = [], lc = [];
   for (let f = 0; f < NF; f++){
     const a = document.createElement('canvas'); a.width = DOC.w; a.height = DOC.h;
@@ -870,34 +891,74 @@ function newCel(hold){
     ua.imageSmoothingEnabled = false; ub.imageSmoothingEnabled = false;
     under.push(a); line.push(b); uc.push(ua); lc.push(ub);
   }
-  return {under, line, uctx:uc, lctx:lc, strokes:[], redo:[],
-          hold: hold || 12, thumbCv:null, tdirty:true};
+  c.under = under; c.line = line; c.uctx = uc; c.lctx = lc;
 }
+function freeRaster(c){
+  /* Sizing to 0x0 hands the backing store back immediately. Dropping the
+     reference and waiting for GC is exactly what WebKit is slow at, and it is
+     the memory this whole mechanism exists to not hold. */
+  for (let f = 0; f < NF; f++){
+    c.under[f].width = c.under[f].height = 0;
+    c.line[f].width  = c.line[f].height  = 0;
+  }
+  c.under = c.line = c.uctx = c.lctx = null;
+}
+/* replayAll paints through the module-level aliases, so rebuilding some other
+   cel means borrowing them for the duration. Nothing in the paint path can
+   evict, so the borrow is safe against reentry. */
+function replayInto(c){
+  const sU = Lunder, sL = Lline, sUC = uctx, sLC = lctx, sS = strokes, sR = redoStack;
+  Lunder = c.under; Lline = c.line; uctx = c.uctx; lctx = c.lctx;
+  strokes = c.strokes; redoStack = c.redo;
+  try { replayAll(); }
+  finally { Lunder = sU; Lline = sL; uctx = sUC; lctx = sLC; strokes = sS; redoStack = sR; }
+}
+function ensureRaster(c){
+  c.use = ++poolTick;
+  if (c.under) return c;
+  allocRaster(c);
+  resident.push(c);
+  replayInto(c);
+  /* Evict only after the newcomer is in, and always the least recently used.
+     One render pass touches at most six cels (current, three onion ghosts and
+     the other layer's pair), so with a floor of eight the victim is never a
+     cel this pass still needs. */
+  while (resident.length > poolMax()){
+    let vi = -1;
+    for (let i = 0; i < resident.length; i++){
+      const r = resident[i];
+      if (r === c || r === aliased) continue;      // never pull the rug out
+      if (vi < 0 || r.use < resident[vi].use) vi = i;
+    }
+    if (vi < 0) break;
+    freeRaster(resident[vi]);
+    resident.splice(vi, 1);
+  }
+  return c;
+}
+function dropAllRasters(){
+  for (const c of resident) freeRaster(c);
+  resident = []; aliased = null;
+}
+
 function useCel(i){
   cur = clamp(i, 0, cels.length - 1);
-  const c = cels[cur];
+  const c = ensureRaster(cels[cur]);
+  aliased = c;
   Lunder = c.under; Lline = c.line; uctx = c.uctx; lctx = c.lctx;
   strokes = c.strokes; redoStack = c.redo;
 }
-function eachCel(fn){
+/* A palette swap or a paper resize invalidates every cel's pixels. Rather
+   than repaint them all — which is what forced every cel resident — drop the
+   rasters and let the ones actually on screen rebuild themselves. */
+function invalidateAllCels(){
   syncLayer();
-  const keepL = LI, keep = cur;
-  for (let k = 0; k < docLayers.length; k++){
-    useLayer(k);
-    for (let i = 0; i < cels.length; i++){ useCel(i); fn(cels[i], i); }
-  }
-  useLayer(keepL); useCel(keep);
-}
-function replayAllCels(){ eachCel(c => { replayAll(); c.tdirty = true; }); }
-function resizeAllCels(){
-  syncLayer();
-  for (const L of docLayers) for (const c of L.cels){
-    const n = newCel(c.hold);
-    c.under = n.under; c.line = n.line; c.uctx = n.uctx; c.lctx = n.lctx;
-    c.tdirty = true;
-  }
+  dropAllRasters();
+  for (const L of docLayers) for (const c of L.cels) c.tdirty = true;
   useCel(cur);
 }
+const replayAllCels = invalidateAllCels;
+const resizeAllCels = invalidateAllCels;
 function dupCel(src){
   const n = newCel(src.hold);
   n.strokes = src.strokes.slice();
@@ -1621,8 +1682,9 @@ function drawOnion(j, alpha, tint){
   onionCv.width = DOC.w; onionCv.height = DOC.h;   // setting size also clears
   const x = onionCv.getContext('2d');
   x.imageSmoothingEnabled = false;
-  x.drawImage(cels[j].under[frameIdx], 0, 0);
-  x.drawImage(cels[j].line[frameIdx], 0, 0);
+  const oc = ensureRaster(cels[j]);
+  x.drawImage(oc.under[frameIdx], 0, 0);
+  x.drawImage(oc.line[frameIdx], 0, 0);
   if (tint){
     x.globalCompositeOperation = 'source-atop';
     x.globalAlpha = 0.6; x.fillStyle = tint;
@@ -1663,8 +1725,8 @@ function render(){
     const c0 = celAtTick(docLayers[0].cels, playT);
     const c1 = celAtTick(docLayers[1].cels, playT);
     // layer 2 is the background: it paints first, layer 1 on top
-    if (c1){ ctx.drawImage(c1.under[frameIdx], 0, 0); ctx.drawImage(c1.line[frameIdx], 0, 0); }
-    if (c0){ ctx.drawImage(c0.under[frameIdx], 0, 0); ctx.drawImage(c0.line[frameIdx], 0, 0); }
+    if (c1){ ensureRaster(c1); ctx.drawImage(c1.under[frameIdx], 0, 0); ctx.drawImage(c1.line[frameIdx], 0, 0); }
+    if (c0){ ensureRaster(c0); ctx.drawImage(c0.under[frameIdx], 0, 0); ctx.drawImage(c0.line[frameIdx], 0, 0); }
   } else {
     const C = dispCel();
     let below = null, above = null;
@@ -1673,18 +1735,19 @@ function render(){
       below = LI === 0 ? pr.c1 : null;   // editing layer 1: layer 2 sits underneath
       above = LI === 1 ? pr.c0 : null;   // editing layer 2: layer 1 floats on top
     }
-    if (below){ ctx.drawImage(below.under[frameIdx], 0, 0); ctx.drawImage(below.line[frameIdx], 0, 0); }
+    if (below){ ensureRaster(below); ctx.drawImage(below.under[frameIdx], 0, 0); ctx.drawImage(below.line[frameIdx], 0, 0); }
     if (own && S.onion){
       // 1 = prev · 2 = prev + prev2 · 3 = prev + next
       if (S.onion === 2) drawOnion(cur - 2, 0.16, '#2f9e5f');
       drawOnion(cur - 1, 0.30, '#2f9e5f');          // the frame before, in green
       if (S.onion === 3) drawOnion(cur + 1, 0.22, null);  // and the one after
     }
+    ensureRaster(C);
     ctx.drawImage(C.under[frameIdx], 0, 0);
     if (flt && own) blit(ctx, flt.layers[frameIdx*2], sel, flt.flipX, flt.flipY);
     ctx.drawImage(C.line[frameIdx], 0, 0);
     if (flt && own) blit(ctx, flt.layers[frameIdx*2 + 1], sel, flt.flipX, flt.flipY);
-    if (above){ ctx.drawImage(above.under[frameIdx], 0, 0); ctx.drawImage(above.line[frameIdx], 0, 0); }
+    if (above){ ensureRaster(above); ctx.drawImage(above.under[frameIdx], 0, 0); ctx.drawImage(above.line[frameIdx], 0, 0); }
   }
   ctx.restore();
 
@@ -1764,6 +1827,7 @@ function holdLabel(h){
 }
 
 function drawThumb(c){
+  ensureRaster(c);
   if (!c.thumbCv){
     const t = document.createElement('canvas'); t.width = 44; t.height = 56;
     c.thumbCv = t;
@@ -2839,8 +2903,8 @@ function flattenPair(c0, c1, f, scale){
   x.imageSmoothingEnabled = false;
   x.fillStyle = pal().bg; x.fillRect(0,0,w,h);
   // layer 2 (c1) is the background layer: it goes down first, layer 1 on top
-  if (c1){ x.drawImage(c1.under[f], 0, 0, w, h); x.drawImage(c1.line[f], 0, 0, w, h); }
-  if (c0){ x.drawImage(c0.under[f], 0, 0, w, h); x.drawImage(c0.line[f], 0, 0, w, h); }
+  if (c1){ ensureRaster(c1); x.drawImage(c1.under[f], 0, 0, w, h); x.drawImage(c1.line[f], 0, 0, w, h); }
+  if (c0){ ensureRaster(c0); x.drawImage(c0.under[f], 0, 0, w, h); x.drawImage(c0.line[f], 0, 0, w, h); }
   return c;
 }
 const stamp = () => 'jellyframe-' + Date.now().toString(36);
@@ -3120,7 +3184,14 @@ window.storage = window.storage || (() => {
 })();
 
 let saveT = null;
-function queueSave(){ clearTimeout(saveT); saveT = setTimeout(save, 1200); }
+/* Autosave is debounced rather than immediate, and the delay is long enough
+   that it lands in a lull rather than between two strokes of the same line.
+   Every caller below mutates the CURRENT cel's stroke list, so dropping that
+   one cel's cached serialisation here is enough to keep the cache honest. */
+function queueSave(){
+  if (cels[cur]) cels[cur].sc = null;
+  clearTimeout(saveT); saveT = setTimeout(save, 2500);
+}
 const r1 = v => Math.round(v * 10) / 10;
 const serialStroke = s => s.kind === 'raster'
   ? {k:'r', ty:s.type, src:s.src, dst:s.dst, fx:s.flipX?1:0, fy:s.flipY?1:0,
@@ -3160,7 +3231,15 @@ const imgToCanvas = url => new Promise(res => {
 
 function docObject(){
   syncLayer();
-  const serialCels = cs => cs.map(c => ({h:c.hold, st: c.strokes.map(serialStroke)}));
+  /* Serialising a cel walks every node of every stroke and re-encodes any
+     pasted pixels to PNG, so the result is cached on the cel and only the one
+     you are drawing into is ever rebuilt. `hold` is read live, and colours
+     serialise as palette indices, so retiming and palette swaps need no
+     invalidation. */
+  const serialCels = cs => cs.map(c => {
+    if (!c.sc) c.sc = c.strokes.map(serialStroke);
+    return {h:c.hold, st:c.sc};
+  });
   const o = {
     v:5, pal:S.pal, cp:S.custom, pr:S.pair, docI:S.docI, speed:S.speed, jit:S.jit,
     tool:S.tool, ci:S.ci, brush:S.brush,
@@ -3177,6 +3256,11 @@ function docObject(){
 
 async function save(){
   if (!window.storage) return;
+  // A stringify in the middle of a stroke reads as the app freezing under your
+  // finger, and a slow line easily outlasts the debounce. Wait for the lull.
+  // A parked float is NOT a reason to wait — dragging one holds a pointer, and
+  // waiting on one the user has simply left sitting would defer saving forever.
+  if (live || gesture || pointers.size){ queueSave(); return; }
   try {
     const json = JSON.stringify(docObject());
     if (json.length > 4400000){ toast('Drawing too large to autosave'); return; }
