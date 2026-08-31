@@ -243,15 +243,33 @@ button{
    the left lights up when layer 2 is the one being edited */
 #timeline2{display:none;gap:6px;align-items:stretch;margin:0 0 7px;height:88px}
 #timeline2.open{display:flex}
-/* folded, the row shrinks to a slim bar: just the tag, full width */
-#timeline2.fold{height:24px}
+/* Folded, the row gives its height back completely — a hidden layer 2 has no
+   business eating canvas. The tag becomes a tab on the dock's top edge, the
+   twin of the ANIMATE one on the other side, so it still reads as something
+   you pull rather than a stray label. It needs .open too: with the timeline
+   shut there is no row to be the handle for. */
+#timeline2.open.fold{display:block;height:0;margin:0;overflow:visible}
 #timeline2.fold #tlStrip2,#timeline2.fold .l2pad{display:none}
-#timeline2.fold .l2tag{flex:1 1 auto}
+#timeline2.open.fold .l2tag{
+  position:absolute;top:-34px;left:10px;z-index:2;
+  flex:0 0 auto;flex-direction:row;height:35px;padding:0 12px;gap:7px;
+  font-size:11px;color:var(--ink);background:var(--panel);
+  border:1px solid var(--edge);border-bottom:0;border-style:solid;
+  border-radius:14px 14px 0 0;
+}
+#timeline2.open.fold .l2tag .ico{height:18px}
+#timeline2.open.fold .l2tag.on{
+  color:var(--onaccent);background:var(--accent);border-color:var(--accent);
+}
 .l2tag{
-  flex:0 0 42px;display:flex;align-items:center;justify-content:center;gap:4px;
+  flex:0 0 42px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:5px;
   font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--muted);
   border:1px dashed var(--edge);border-radius:9px;
 }
+/* the eye says whether layer 2 is showing at all — shut, it is out of the
+   canvas, the playback and the export until you open it again */
+.l2tag .ico{height:15px}
 .l2tag.on{color:var(--accent-ink);border-color:var(--accent);border-style:solid}
 .l2pad{flex:0 0 44px}
 .cel{
@@ -735,6 +753,8 @@ const PNG = {
   plus    :['90/96','data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFoAAABgBAMAAABvZ3j6AAAAMFBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABaPxwLAAAAEHRSTlMAESIzRFVmd4iZqrvM3e7/dpUBFQAAAgJJREFUeNrN179LAmEYB/A7SSrtFzbWYNciEWQW0ZZBSzS4OQX5BwTl5NIQtLSEDQ1Gg0KbDd3SdIMELg1hNLXIRS1Bw4VJWeg9+d5lpb53Pk9w4HfUDw/v3fu+9z6vIHDjgWpcQCcNoOf9SCwCSwmpew1dRmqvoV9JGlu7h6RFknaRNHvf+KcUkvTalySdIWkZrTVK7aMCpXZQresYVg+xcY9g9TDT2N0gbJF0mqSTFO3SSBqc014H9QDDOnYuI0xXBOf0B0mXSPq+G/QS0y8tP06GLPR5e+2prGY1ucaCbdrEfeyXQ75WW3VUtXmSZj23eG2sMrix0fEJ32iWBRrhazfww9f9FvqNu8/SFlpvP6DWlBxYpRUH0mCTJrqwqQPg9PxBETrFlJIUUKBz2N5bPT4BXLYb3w77pPZT6l2KfTFydkxXlJAkSXXmM4Y8Zk2L+ZVl3peam1PONFuXjmH0Z/bMHHLY6oT5TfXK/73RarwFN/PXPkXDP8/y3mktX3TsZcwDyRjvLKKXMQde3fOjOh8P++s5jO2TEjuVBKWrGuHN7wPp3M6QtNwN2piCIKk29iQWC5RTfp3SE0wDQYsaRbugW3RjXyO1WyV1VZF/6AxJyw7WviXpMkk/IvU4adwe0jtxOajNQ1F25ga4QdKDTO9itVi/eNXQdzrBXdC518UvIFHYD67v4O4AAAAASUVORK5CYII='],
   animate :['96/78','data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABOBAMAAAAtEA5NAAAAMFBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABaPxwLAAAAEHRSTlMAESIzRFVmd4iZqrvM3e7/dpUBFQAABPZJREFUeNrFV29oW1UUPy9pmqRN62txOibY0Dk/yRrb+QcE24G4KWLCYPqxocrGREgdijqQVhQsDDHOT2POzME+OMSWMVCc4wWcCG7s5YPgUDBOcR+GJFuS1jZ/3vGce1/y8sx9Sf3k+fDezX33d+495/zOOTcAbul76nN0JA2QuQa9ZOTJAwe/PPoNAxIAGmxWRka2HNDh/5LR/7h+a/FTOfDNaR8nNgFYwDVafOIcmNUw3qaJHTHw7Z/xBuSxBhDBegirA1gCCOM6LOMqf9p2Ntm53o8MGEM0bEAGG/2If/M3U77cMoho6RDnQG0wIISMZSXQLz5B6EThq7aQTNMCHQwGlBkQl7SoA58Tkc60TK8/HAAvnaHNSXIRAqQcwAS9T4FP/CagNjkpTUBclIDFCcwJfTaAdV2XK9iT9yJ+yz4hyWr8tKKzmCWnCakSdflNVh86KpVmEBsMq6Yw65NKFuzR+rStURoPPLglVAN8gFYRs2LbLANor3oxHcENjigKnUBzPxTSKXFQrcizJUKfvwnkoRztkLuTfN38RB6EoIAZ+N2R0zAgJkvkwITOOtO0LMGW1TkKNmAIy8D4tO05AvhlSP0vADz2PfOwWBNRkADaWHjHmmcTBAAeibrjf9crrOvwTvYWOS4po1hi+2vbTR50yjRWiCcl4d6oZESZAb8T8ZSAYZwH31JSHEaXUcwxYJGckFYBfPvswRDxneLdOH4xRserE/iN7hkWYs2Dgix0vo7MUlSi53Rh8ztKdU9f/foj1XxEMFeZToiXPABrinkZl2M8nHR9YOqtdq4Py+haMfB/gq6jaSeZnR0yYdft38RWx1zf7lMZPYt48z0KUUXYgjM9i1qGyoSf8sASKUv52UuWseoz0Gh2lI2egCKuDiE+KhbvkdzuBShRJp7nZIxy0sd6AypUNSzub/fvpvI532M9paFlV5kwVoaZyt2lr9VAK8tYHu59pGAL0KD0ukMWpW7yeAtAJaa8oM7E9lbBlaiWxxtFPEKAooo8LnlWVJAJTJi4izykToD2JJZ08O8Ds6G/dCbU0+adaN8X4OHT9EiRzcHP3u4CMLAxN/pi81eAinggL6qqd9RW2n4GpK9ox7vfjXlFzcV/yXBM9hdVuSnSk1um//jh8XFywPbYVtmLEhn0COAQWgCyif51xaRcCP7K4y12w1PlMwH2OvcxYuoDth1qwCztfE/bBe46iCaP6voi0nOt2dUlYfmUUrIeXr1NSVa/cMHE2kXZDJr4qIdXVwhAhVob0blbZ7mIIP4Z9wheiK8HeQbIIDSionCe0Rc8ikeYFPnRBmjiRLTDj4xSp8Ug2Ux0WNNHJYCRb/0kNlOzfJhs5q5dL/7yKp8v69zYlB2NumTabvOIlw1x32l6Tw1IUU0JtYUh6ngv6RG3xbYy42Rb0CMMlD50+zQcwIrdMiMeTNKEIm18/ODrXwgAe8mosTPWlYCAcwjt+TdNQdZn+DntEbeAq0Zoe+eajTPOLFTIQKdtYyJD4yLmSsC/O5rg6g2Tri/qBMUPOyKDLfM7hff/+exrM/DQ/ubN3sR1ozuAW3pBPAqFa08QdW+NyRur1+XDLZT9pb72mCsvDW7Jcgp5FcuXlYCIV8ngfzJLS+9T6bLyDuAUk7t7V5maetA/NXXoaovi2xrRTf312rXnpH1z2L3pv2s7jHOds/8AkRCAuBiS/eYAAAAASUVORK5CYII='],
   loop    :['96/80','data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABQBAMAAAAUzG2mAAAAMFBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABaPxwLAAAAEHRSTlMAESIzRFVmd4iZqrvM3e7/dpUBFQAAAvFJREFUeNqdl7tvE0EQh/d88SM8xLkGErdBQvgvCC5SQBfRQUNAFHQJVUpHFOCGJEgRUiSk0CAkC5FQU5igiBYkCgTCgKgQjYHYMUfOXm5fd7t7d7tzTJWN99PM7OzM/g6hDJuYu4DHcw0Etc0OJhZserD9q1jYjxpk/0Uc23DJvv8Ulm1kJZwvCoCHNuAe1sziYlLfj8d1I7CdAPC+MQOcYiYXx8ThtNvtbYiLCbZl71L4t7vGgUNTTPRK7PH4ngIOivy+E62u2Gsx0+1el5ZnQbVI1n0IBtBp5gLldfEcTlylQB8OHGGFhAOIJTEPBxYp8DJvTK/ggNsjwEGOJM4T4E8O4CSNyYMDZWsX6T1Ck3ibI6Y3/wU8itetFgTw5NH7HQBEY7lCVis5PDStHVVU6uBQPLDXwVNw42VkgMhhyj6rKDAWHqb5rNqxANFtFYAhi0oqYHBxTvk5AgJzP0TACWx1Mc1P1a1HdTMfFJn6PkI313wiDaQ3U5tuhe6n91UxZ/bpWf0OV50Y0Np2liS2wB+lPg0l9FPsSW+42rZb5H+/+NUblPlMLsuP30Ii9PDKHJV3aMDPJNDQgZK8VG9gk41UWXoMxMxJe4+dDgMWpQ3zvIrcfCVpFyeAgbgn/JDWlYhKTGcUVQcCuBOe3TW1DPTO+PwBorYR9XdYMqda1S4ELQO+IUVAU2R1O6wBZA2LuJepV3TAV+TUUpZK0R1MptaY2PFUB1EZviWAKXW/OHMR6F9bSLeUNzhNCDpSo+DPt5EG4PWEixjwH2g3UspJazj2U12fICnN0xDPM8YvvKRUIbarfA4EG8LFME0W6HJllbaaGw6U0cdapnDeVWdpKJBKrVbiZSqQQFmwoxWlmbMe8lDSfUDPlIOqGOdg4fJBDRVYUI9lB9ny2YtP913sADcAkgjjJ3eXl1mnBR5AEuX5kHF7GvDVpj9mNcAuIpvK/vt2iaMM2dcQUXQmTiOA6buZh6IBoF+5zhydg33D/n9t+LgSWH4ULQAAAABJRU5ErkJggg=='],
+  eye     :['112/96','data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHAAAABgCAYAAADFNvbQAAAIoklEQVR4AezdOag1SRUH8KcImogLogYuiSYiLogoiKAgaCQaiSYuGIigiIKIBmogLoErJoKaqYlmIiq4oKCBIIImJgMDszLBBAPDDLOd38fUmzt9b3dXV1f3vfWmPur/VVfVOafO+f+r+r557w3fs6/6n6YZ6AI2Ld/VVRewC9g4A42n329gF7BxBhpPv9/ALmDjDDSefr+Bz0wBG6/6BqXfb2DjYnYBu4CNM9B4+v0GdgEbZ6Dx9PsN7AI2zkDj6fcb2AVcwEA3rc5Av4HVKd03YBdwX76r79YFrE7pvgG7gPvyXX23LmB1SvcNeBMEfFdQ9ufA4wN8LcYQ3a3GDm4NbspfrQiIeCAIEAyIprc21OSrMQFsgB14FgPCpO12yQISJRGuB4KANShlXwxIYooF4umJa78EY2sXh0sVMBGHzKuNWSNk2o+gns3ZO8HY/MapLA9/aQIiDIn65dVs6yGni8vtkgR0wmFbGdZHl+PFvFIvQcCLPNkzOqdXKjHdSv1ZRD23gAqHGb4uctnBA8npiUrMXYXcU0BFKi5BseYQUAt/qRVoRZxdhdxDQCK5ZaC4hBUcXbsSDN4dM88KHPZfj3FCPO7e1OmQOrCbbb61gJInHBFLiyBQEkJPJEiCeWaT4r8jHt4eeFngVYEXBT4T+FLguwExDsEXYmmTRkg8bBJ8KwElTDjJr0kcsQQSL8EcpLhq+HQM/hd4LPD3wDcDnwp8PPDZwI8C3wp8PvDBwMOBnwTEFB8ciAQCx3K1hgd7VQuYAik+PdfoJem1IeE1t04uSAXPY3Cz7o/FHwdeFyBAdLfa2F9viIVvBO4IfDvw3MCwqUMsQjosMLRZOsaJuEv9Ju1rCljjxkkWWcjTG5/Cq2PyH4EfBp4fKG1fDMf/B94TONUQ7hABMU/ZLJkjogOOK7Fhif+RbS0BJbL2xhEMUXCU6MHEW+L5XwGfc9Gtbj4n/xhRvG6jG21qJCKMGmUu4IqYIG6m27FZDQFTMsfR82eQQjgiTnm9Jhb/EHhJoHb7WQT8XGCqIRu8IUDeU/Y5a0R0K/GYY/80m7UCKsbr4GlBMwfEQgDhxMlx+0UYvTiwVfteBP5AILfJm5CgDlBXrv+hXRGPawSUvNNzmMTcs+IUmQoWw9ycn/WvxF9vDWzdfl64gTpAffqSMItFLBUQ8UvEc9OSaCXFeWXas4SUpT4vDIffBda0UhG9RhfVWSKgU7JEPMItSuoEc5+MuecE9mrvi41eH1jTSkXELSGz9s4RMAXTL/2wdfOyEpkx+sTM+hbLvqhZG7e0fpfEocf5ZA5TAgogEBBOPxlssOhVKcZgevHwFeHx2sBO7Xobn7e+6r2eKHjAQamIbiLOJ0UcExDxAkw6TxQkca+QCZPspTdlW9Y3fH+FkLgsFdH2RNSfxJiAxDvpkDEp2Vri2c5/aOvPgfdW2jSJ6GCXhBy9SGMClmwiOcJJtsR/zOflYwsZ838Kmx8EStsbSx1P+OEFP76oc8jhhNnJqc0FlIzkiHgygxWTpYfskdjzI4EXBErbS0sdZ/yICTNm88tj5GwhxHw2py3uPj09O3tXWPhm9ceiL21uy/NKnWf8Jj/bBr6jYo8JOPCfHfrMlNDoVZ+NMG7gG9fjq+Mrr4wlP/+LblV7aJX3sTOOfFWvP149nvF2O559cmZMwEmnJ32HnYSIOHpahg6Z43+GnR/URrd7uyd2RHZ0VRpucJQbjA58Ru3HBPQK5TzqOLHgNtqUoBNmi5ZuW2Rdz/i/9UJd4QQ3V5l/8M9n0nxMQE6cfQb44kQwc7mQqJMmRq7PlN2vphY3XPtbduxpQzzgZNrqqVV883lqZuRpSsDk4jYKRkjPaT6nl7RX0Fox/QrEozkbVrb57cp43kK4w0NuKBzzybLPETAFEpiITkeay+0VoohSMR+MjUp/zBOuRc3tK/kCSq3g0IK6cxNIHOfaF/2zA05HiYgpKcUpiphiQVqb6v122QNTBpXXvl8QTy1EA3UuCbFYPMGX3ED2CRJ1G22a5kp6QkJOwW7hR0s2KfD5dfj8JjDXiCR3cCDVMuczXHcZcAnDtdlxqYACE8+mEjBeg0SEfioOUmvsN7XHnbHotkc32RxiwskZJo1HFnEojn7EZHp6jYApsgRqCZlzgu3nN6zT/jX79O03Ip6KSyj7Ey4n11Mx0hzR8JbGRX0NAW0sGYXpjUuBIOTM+X8hDL4cqNnui2B++vDX6DW5gHzAK1JPOPNsSoGn1eLZvJaAYoGkvOJAkuaWAjmJLIQ5GHown+A3qv1C7u1LNzhh//uYe1vAd3zsb68EY4jlKg03eKoSrLaAkkI4SNI3AiQM1pYAaZBOvOdDf/PvjAm/pe33Oe+N56XNb2V/J5z8fxM/jf5QtBhWaw5z4gM314HXPmwh4DAnCUMSc7i+ZkxEpP8ngnwo8O9AbvtlGPqs8xMLMYYHJJZXNwdX3cQj4uqAwwB7CHi4ZxKyZjGIJwC8+XCzmecPxzrf6DZpalTvJsFT0L0FTPs6kU5nGt+0nnhq3LyucwmoMKfzJoq4m3hIPKeA9m9ZxCSUm5aQPu/UtgvOLaAik4gIMb50eGskweR8iN1zvwQBFU1EpDjBCDJ3ThDlMA/jlJ9cjc+Z3/XelyLgdULxgKAk5CGJsVTcEJ4wFsR6Ekmf8vAM1sd8zzZ/iQImMhAIxEQgMQGRkOyGvTVgyy/5ewZja2wgzemNT8Ubzp17fL3/JQt4nWQ8IJaYgGggBBAD0pwe2PIL96NmjQ2M2Rw5XeJEKwJOcUcMaFqIqQKn1m6CgFP13fi1LmDjEncBu4CNM9B4+v0GdgEbZ6Dx9PsNfEYJ2HixNzH9fgMbV7UL2AVsnIHG0+83sAvYOAONp99vYBewcQYaT7/fwC7gPAPdYjsG+g3cjttdIncBd6F5u026gNtxu0vkLuAuNG+3yRMAAAD//xskl94AAAAGSURBVAMAmxt30Cr9fL8AAAAASUVORK5CYII='],
+  eyeoff  :['112/96','data:image/png;base64,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'],
   onion   :['66/96','data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEIAAABgBAMAAABbHrnmAAAAMFBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABaPxwLAAAAEHRSTlMAESIzRFVmd4iZqrvM3e7/dpUBFQAAAzZJREFUeNqFljtvE0EQgMd2jB+ExBVCvHQNokCKjVKT+A/AuUxnp6NAgoaK4lxeg3BHhRwo3Rz8gjgtTZRf4GAakECOg504tu+Wu9vX7HovN9Vq77vZndl5ASiS3yPEr4BZ8r2eteaRUI7MQGZAuCzMxAMBkKBmJI4lQQ5MwBoCyFcTUcRELY2Y6kZsbz8FKCDijUa8J+QC4L4EfEsF7lLzbAnsayqa0e4vV6ro6FccEU10FaADxH+bRhDy3UojyEyx1zEhfgsRN0wEucQHvY71NjXkT0tTMi/qWi50j3xcOQgpeWa8CVZSNBNYCUlV4qQq2VX2F/BupCu5pxBzgKqupKQQS4AcU3JuJkhfnDtPiKJwP8eWn81ElJQ7dDnRMnJ2my7OwhRx1LBnx55CmT59uHVLzeAdToDHUyrTVawpCWIzXozFX3P17Ro84uayGDCCpaTFEyywxPUblLBlUaAZ/jNcbeCrUluWUQ3Mjpjn2dFHKHfJLF5viTfrovelPr2iRVOzJt5k1WVIC07skn/CaRXVHZFsqhc5QC5lhhU4kZGELd3BXRU9WVYas6vUSOrMNjdmimK9hhO5xRcTlC88FmJnnvA/lyjnWriAj4Vu4UVhLSWuMMFL6Q8elJHPfBMhuleXHe9wZbaepx6LRIfbYus94QUmok3Z4BroZTqIkLl0hsL2nHlsyqIjQBFCczJsmB94R4uIoYMcn42DuC7eNtbZp9l2QpXEP395wiMo/tbP4QTyUJ4DJ+BQJArAQ7XcMaKKGtSGJCaS2EL25o1EEb1vTm3wZeoXOjuc6i2+w4kZcz4tS9kBNgVusis3USiKKn0p+wvAusmYoczaGisuY6ig1sb8w8ssPdxdhjGQOVaq5Yg9Mm91i7oYir7hCtSQnWgCj9UZwGYhKG3sjVSiwEOwutKDOkpZn+o9YrUk78OnpD7G/vXbeQ0I9GktWJlWBLGe0CxnKfMD6nMAr8zEBE0Hh0YCT5A5I9HGw86dQYoOsz11dex6Tnf/mhzG5KX723Vda2+QPABCRcvJTsJYnu2mEXocm6SZcFPkP884L2MpX38NUYWs64jSAE8wRnnkBaz+/gfxKs2ar1yvGgAAAABJRU5ErkJggg=='],
   done    :['69/96','data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEUAAABgBAMAAAC5wqKfAAAAMFBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABaPxwLAAAAEHRSTlMAESIzRFVmd4iZqrvM3e7/dpUBFQAAAvpJREFUeNrtlj1vE0EQhtc2URw7Ia7SEMQpNDQkLikQ8Q8IMiUIUFLROn8AAT0iiC6Vg9LRYArqkIomkoNoaCxbfBQ0OQNxILHvhtud2Y+727staXiLZHf9eDyzOzuzjCU15b/1mEOvAb47kGmItGP5YGmpFmN+4fh6T8PnAD7EmLEYVuQgUmEdIGgolyNmUiPPoE7LD8VXJdTnMz65ywcdXCyD0AkxbT55zNgiGN7PIwNvcLrCx0PGHhlMoUsMbIr5Kh8OeByamZII/DaZdVxDf+YUAyKaC3w0Yj4u3RJMSzPPdQjPcGWEPm5p5osRptAZbkjBWBLfmjEWKPISzo74n2O+UPQ1Q7tcFZMXRf3rmpl4BnOC29tJMGe09Tf4ZANd30kw8rf4XgUUXtKOzJgubbDttyB4IlboEIpgYwD2JfMnmwk2iflKKWphhB/8/yFj59V5JRj4iMwxug7MxoQe+VwltzQTGNnAYw5eCTOfTWZ/TTJDmW+U6JqpFfqKaaVOB1c8tthLM3SBWVNcN563t5/ijswqRl7CWZ3/bM0/OKhT/kTaNW4/pW2kBTPtxnVVIu4ZRlEXjTtBun/0LVF87nBLnxyl6/K13m6N/dc/08z29oarvfhUknI0rwtipvi9DB1My82Iy+NgRANwMHNGoc/SVchqrVpb5gVXWnjgJdxRF1yq3FdXT7oTNtLGJ7G3gCo3SjdjYVSohsWExUGdc9NmRvTjqEmiin1I3XrG9gTzg2bLtqCoWA3JjG9M4tmiamvZaOaGKlhysThcEuPUW6lkPgTatqiok1FgJd+yOdqHgWqOp5ZzxlgG6hysWdGXgU1bN0fvIvdCePbTyqzIXtzNTtJVahSirAcsh6mjmVEe4+Gj5F0e01gGW1rIUiI+PGwbfcf+VIX3uvfbZHTjzOdxN/HEs6mZbL95TOi5mdPsKqB6fYc57eQVpgrEn8k2VSHdfzPshJ7bTm5txysWvswtgXvgLv9NdyUV2TF2dSzfaYaxKzYzfwF4LTPLnf0UhwAAAABJRU5ErkJggg=='],
   wiggle  :['96/34','data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAAAiBAMAAABSJsFsAAAAMFBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABaPxwLAAAAEHRSTlMAESIzRFVmd4iZqrvM3e7/dpUBFQAAAZ9JREFUeNp9VDtLA0EQ3kuO+EzUUrQRa1EhvfYiCIKVj1QpUoi/QG0sUgi22iRoJ4K1XBFTSzCNIJgjFtYeCJrE5DLeJfeYmd316/ab77vZm8cKIeNDqDEB4Erknm3b/RetAR4pNdZwPBL6tQuV4d4LvRPGqkCAjkI/7ge6mLmCGKeyoTQIxGejiPTQkvSjQA3JAhDkqdzIn1BDcgMYjohhNqRDYonr4WcV6RdL1JBYcCQDtNGFovIFhmVQIW7GJFBDQqmH38jQpIZDR22AcqD/BGIY0enDtqYR9eUPENb0slmeYv4ZMSt+BnztbSEO0LEszFusH0z+LiKuvXPqOD53iuc4f3/dN1RQeNonUrqf6p2hKcRVKTTVNbgZNiHK8BTVfVP5/Srr4ls8CknFpdx6EJxTLdmabKjztpMdk4fF5XOSowvDx7FrMMM3W0iWoj1DHhsPW3yF6V+g+04N10vaeVOzS8Eo5uRXZSfuXguHM+y1EYrukQKmdQ+dMO8C/SWh9/EQsUpZlh98oKxDlpejZjdeGZXWJtAg818CBf4AktoFbR4+dTEAAAAASUVORK5CYII='],
@@ -761,13 +781,12 @@ const S = {
   hand:false,
 };
 let DOC = {w:DOCS[0].w, h:DOCS[0].h};
-const MAX_UNDO = 40;
 
 /* A document is a list of cels — storyboard frames, each with its own stroke
    history and its own hold time. The globals below are live aliases onto the
    current cel so the rest of the drawing code needs no changes.           */
 let cels = [], cur = 0;
-let strokes, redoStack, Lunder, Lline, uctx, lctx;
+let strokes, redoStack, Lunder, Lline, uctx, lctx, Lcel;
 let playing = false, playIdx = 0, playT = 0;
 
 /* Pro mode: up to two layers, each its own cel list. The globals above always
@@ -783,6 +802,11 @@ function useLayer(k){
   useCel(docLayers[k].cur);
 }
 const proOn = () => S.pro && docLayers.length > 1;
+/* The eye on the L2 tab. Hidden is hidden everywhere — canvas, playback, PNG
+   and GIF — the way a shut eye behaves in any drawing app. The drawing itself
+   is untouched and comes back with the eye. */
+let l2Hide = false;
+const l2On = () => proOn() && !l2Hide;
 function ensureLayer2(){
   syncLayer();
   if (docLayers.length < 2)
@@ -803,7 +827,7 @@ function startTick(k, i){
 }
 /* the layer-0 and layer-1 cels that share the current editing moment */
 function currentPair(){
-  if (!proOn()) return {c0: cels[cur], c1: null};
+  if (!l2On()) return {c0: cels[cur], c1: null};
   syncLayer();
   const t = startTick(LI, cur);
   return {
@@ -863,7 +887,7 @@ const jr = (r, a) => (r() * 2 - 1) * a;
 /* ---------------- layers ---------------- */
 function newCel(hold){
   return {under:null, line:null, uctx:null, lctx:null, strokes:[], redo:[],
-          hold: hold || 12, thumbCv:null, tdirty:true, sc:null, use:0};
+          bake:null, hold: hold || 12, thumbCv:null, tdirty:true, sc:null, use:0};
 }
 
 /* ---------------- raster pool ----------------
@@ -882,7 +906,7 @@ const celBytes = () => NF * 2 * DOC.w * DOC.h * 4;
 const poolMax = () => clamp(Math.floor(RASTER_BUDGET / celBytes()), 8, 24);
 let resident = [], poolTick = 0, aliased = null;
 
-function allocRaster(c){
+function newSurfaces(){
   const under = [], line = [], uc = [], lc = [];
   for (let f = 0; f < NF; f++){
     const a = document.createElement('canvas'); a.width = DOC.w; a.height = DOC.h;
@@ -891,27 +915,77 @@ function allocRaster(c){
     ua.imageSmoothingEnabled = false; ub.imageSmoothingEnabled = false;
     under.push(a); line.push(b); uc.push(ua); lc.push(ub);
   }
-  c.under = under; c.line = line; c.uctx = uc; c.lctx = lc;
+  return {under, line, uctx:uc, lctx:lc};
 }
-function freeRaster(c){
+function freeSurfaces(s){
   /* Sizing to 0x0 hands the backing store back immediately. Dropping the
      reference and waiting for GC is exactly what WebKit is slow at, and it is
      the memory this whole mechanism exists to not hold. */
   for (let f = 0; f < NF; f++){
-    c.under[f].width = c.under[f].height = 0;
-    c.line[f].width  = c.line[f].height  = 0;
+    s.under[f].width = s.under[f].height = 0;
+    s.line[f].width  = s.line[f].height  = 0;
   }
+}
+function allocRaster(c){
+  const s = newSurfaces();
+  c.under = s.under; c.line = s.line; c.uctx = s.uctx; c.lctx = s.lctx;
+}
+function freeRaster(c){
+  freeSurfaces(c);
   c.under = c.line = c.uctx = c.lctx = null;
+  dropBake(c);
+}
+
+/* ---------------- bake ----------------
+   Nothing you draw ever falls off the end of the history — a cel keeps every
+   stroke it was ever given. What it stops doing is REPLAYING all of them.
+   Once a cel runs deeper than BAKE_KEEP strokes, everything older than that
+   window is snapshotted into a second set of surfaces (the "bake") and a
+   replay starts from those pixels instead of from blank paper. So undo,
+   revisiting a frame or a pool re-entry on a 900-stroke cel repaints forty
+   strokes, not nine hundred.
+
+   A bake is derived pixels, exactly like the raster it sits beside: it costs
+   one cel's worth of canvas, is charged to the same budget, and dies with
+   that cel's raster.                                                      */
+const BAKE_KEEP = 40;          // strokes always left live in front of the bake
+const BAKE_MIN  = 24;          // smallest bite worth baking in one go
+const BAKE_STEP = 48;          // largest, so one lull never stalls on hundreds
+const BAKE_MAX  = 2;           // cels allowed to hold one at once
+let bakes = [];                // live bakes, charged to the raster budget
+
+function allocBake(c){
+  if (c.bake) return c.bake;
+  const s = newSurfaces();
+  s.n = 0; c.bake = s; bakes.push(c);
+  /* Only the cel under the pen really needs one — two, so that flipping
+     between a pair of frames doesn't rebake on every switch. Any more and the
+     pixels would cost more than the replays they save. */
+  while (bakes.length > BAKE_MAX){
+    let vi = -1;
+    for (let i = 0; i < bakes.length; i++)
+      if (bakes[i] !== c && (vi < 0 || bakes[i].use < bakes[vi].use)) vi = i;
+    if (vi < 0) break;
+    dropBake(bakes[vi]);
+  }
+  return s;
+}
+function dropBake(c){
+  if (!c.bake) return;
+  freeSurfaces(c.bake);
+  c.bake = null;
+  const i = bakes.indexOf(c);
+  if (i >= 0) bakes.splice(i, 1);
 }
 /* replayAll paints through the module-level aliases, so rebuilding some other
    cel means borrowing them for the duration. Nothing in the paint path can
    evict, so the borrow is safe against reentry. */
 function replayInto(c){
-  const sU = Lunder, sL = Lline, sUC = uctx, sLC = lctx, sS = strokes, sR = redoStack;
+  const sU = Lunder, sL = Lline, sUC = uctx, sLC = lctx, sS = strokes, sR = redoStack, sC = Lcel;
   Lunder = c.under; Lline = c.line; uctx = c.uctx; lctx = c.lctx;
-  strokes = c.strokes; redoStack = c.redo;
+  strokes = c.strokes; redoStack = c.redo; Lcel = c;
   try { replayAll(); }
-  finally { Lunder = sU; Lline = sL; uctx = sUC; lctx = sLC; strokes = sS; redoStack = sR; }
+  finally { Lunder = sU; Lline = sL; uctx = sUC; lctx = sLC; strokes = sS; redoStack = sR; Lcel = sC; }
 }
 function ensureRaster(c){
   c.use = ++poolTick;
@@ -923,7 +997,9 @@ function ensureRaster(c){
      One render pass touches at most six cels (current, three onion ghosts and
      the other layer's pair), so with a floor of eight the victim is never a
      cel this pass still needs. */
-  while (resident.length > poolMax()){
+  /* A bake is another cel's worth of canvas, so it comes out of the same
+     budget — but never below the six cels one render pass can touch. */
+  while (resident.length > Math.max(6, poolMax() - bakes.length)){
     let vi = -1;
     for (let i = 0; i < resident.length; i++){
       const r = resident[i];
@@ -946,7 +1022,7 @@ function useCel(i){
   const c = ensureRaster(cels[cur]);
   aliased = c;
   Lunder = c.under; Lline = c.line; uctx = c.uctx; lctx = c.lctx;
-  strokes = c.strokes; redoStack = c.redo;
+  strokes = c.strokes; redoStack = c.redo; Lcel = c;
 }
 /* A palette swap or a paper resize invalidates every cel's pixels. Rather
    than repaint them all — which is what forced every cel resident — drop the
@@ -954,7 +1030,7 @@ function useCel(i){
 function invalidateAllCels(){
   syncLayer();
   dropAllRasters();
-  for (const L of docLayers) for (const c of L.cels) c.tdirty = true;
+  for (const L of docLayers) for (const c of L.cels){ dropBake(c); c.tdirty = true; }
   useCel(cur);
 }
 const replayAllCels = invalidateAllCels;
@@ -1189,15 +1265,70 @@ function paintSeg(st, f, ia, ib){
   }
 }
 
-function replayAll(){
-  clearLayers();
-  for (const s of strokes){
+/* paint strokes [a, b) through whatever the aliases currently point at */
+function replayRange(a, b){
+  for (let i = a; i < b; i++){
+    const s = strokes[i];
     if (s.kind === 'raster'){ applyRaster(s); continue; }
     const fresh = newStroke(s.def);
     for (const n of s.nodes) addNode(fresh, n.x, n.y, n.p);
     s.rngs = fresh.rngs; s.offs = fresh.offs; s.wMul = fresh.wMul;
   }
+}
+/* copy the cel's live pixels into its bake, declaring them "the first n" */
+function snapBake(c, n){
+  const b = allocBake(c);
+  for (let f = 0; f < NF; f++){
+    b.uctx[f].clearRect(0,0,DOC.w,DOC.h); b.uctx[f].drawImage(Lunder[f], 0, 0);
+    b.lctx[f].clearRect(0,0,DOC.w,DOC.h); b.lctx[f].drawImage(Lline[f], 0, 0);
+  }
+  b.n = n;
+}
+function replayAll(){
+  const c = Lcel;
+  const b = c && c.bake && c.bake.n <= strokes.length ? c.bake : null;
+  if (c && !b) dropBake(c);          // undo walked back past it: it is a lie now
+  let i = 0;
+  if (b){
+    for (let f = 0; f < NF; f++){
+      uctx[f].clearRect(0,0,DOC.w,DOC.h); uctx[f].drawImage(b.under[f], 0, 0);
+      lctx[f].clearRect(0,0,DOC.w,DOC.h); lctx[f].drawImage(b.line[f], 0, 0);
+    }
+    i = b.n;
+  } else clearLayers();
+  /* A full replay of a deep cel passes through the exact state a bake wants,
+     so take the snapshot on the way past rather than paying for it twice. */
+  const cut = strokes.length - BAKE_KEEP;
+  if (c && c.under && cut - i >= BAKE_MIN){
+    replayRange(i, cut); snapBake(c, cut); i = cut;
+  }
+  replayRange(i, strokes.length);
   dirty = true;
+}
+/* Advancing a bake needs no full replay: it already holds the state after n
+   strokes, so the next bite is painted straight onto it. Runs off the back of
+   a finished stroke, in a lull, never mid-line.                           */
+function bakeAhead(){
+  const c = Lcel;
+  if (!c || !c.under) return;
+  const end = strokes.length - BAKE_KEEP;
+  const have = c.bake ? c.bake.n : 0;
+  if (end - have < BAKE_MIN) return;
+  const cut = Math.min(end, have + BAKE_STEP);
+  const b = allocBake(c);
+  const sUC = uctx, sLC = lctx;
+  uctx = b.uctx; lctx = b.lctx;
+  try { replayRange(b.n, cut); } finally { uctx = sUC; lctx = sLC; }
+  b.n = cut;
+  if (end - cut >= BAKE_MIN) scheduleBake();     // catch up over several lulls
+}
+let bakeT = null;
+function scheduleBake(){
+  clearTimeout(bakeT);
+  bakeT = setTimeout(() => {
+    if (live || pointers.size || playing) return scheduleBake();
+    bakeAhead();
+  }, 600);
 }
 
 /* ---------------- selection ----------------
@@ -1467,11 +1598,10 @@ function endStroke(){
   if (live.nodes.length === 1 && !live.emit && !live.scat)
     addNode(live, live.nodes[0].x + 0.01, live.nodes[0].y + 0.01, live.nodes[0].p);
   strokes.push(live);
-  if (strokes.length > MAX_UNDO * 8) strokes.splice(0, strokes.length - MAX_UNDO * 8);
   redoStack.length = 0;
   live = null;
   cels[cur].tdirty = true;
-  refreshActions(); queueSave();
+  refreshActions(); queueSave(); scheduleBake();
 }
 function abortStroke(){
   if (!live) return;
@@ -1719,7 +1849,7 @@ function render(){
     ctx.globalAlpha = 1;
   }
   const own = !playing;
-  if (!own && proOn()){
+  if (!own && l2On()){
     // pro playback: both layers run on the same global clock
     syncLayer();
     const c0 = celAtTick(docLayers[0].cels, playT);
@@ -1730,24 +1860,28 @@ function render(){
   } else {
     const C = dispCel();
     let below = null, above = null;
-    if (own && proOn()){
+    if (own && l2On()){
       const pr = currentPair();
       below = LI === 0 ? pr.c1 : null;   // editing layer 1: layer 2 sits underneath
       above = LI === 1 ? pr.c0 : null;   // editing layer 2: layer 1 floats on top
     }
     if (below){ ensureRaster(below); ctx.drawImage(below.under[frameIdx], 0, 0); ctx.drawImage(below.line[frameIdx], 0, 0); }
-    if (own && S.onion){
-      // 1 = prev · 2 = prev + prev2 · 3 = prev + next
-      if (S.onion === 2) drawOnion(cur - 2, 0.16, '#2f9e5f');
-      drawOnion(cur - 1, 0.30, '#2f9e5f');          // the frame before, in green
-      if (S.onion === 3) drawOnion(cur + 1, 0.22, null);  // and the one after
-    }
     ensureRaster(C);
     ctx.drawImage(C.under[frameIdx], 0, 0);
     if (flt && own) blit(ctx, flt.layers[frameIdx*2], sel, flt.flipX, flt.flipY);
     ctx.drawImage(C.line[frameIdx], 0, 0);
     if (flt && own) blit(ctx, flt.layers[frameIdx*2 + 1], sel, flt.flipX, flt.flipY);
     if (above){ ensureRaster(above); ctx.drawImage(above.under[frameIdx], 0, 0); ctx.drawImage(above.line[frameIdx], 0, 0); }
+    /* The ghosts go on LAST. Underneath, the moment you filled anything in
+       they were painted over and the aid you were leaning on vanished exactly
+       when the drawing got interesting. On top they stay readable over solid
+       colour, and they are faint enough not to be mistaken for your own ink. */
+    if (own && S.onion){
+      // 1 = prev · 2 = prev + prev2 · 3 = prev + next
+      if (S.onion === 2) drawOnion(cur - 2, 0.16, '#2f9e5f');
+      drawOnion(cur - 1, 0.30, '#2f9e5f');          // the frame before, in green
+      if (S.onion === 3) drawOnion(cur + 1, 0.22, null);  // and the one after
+    }
   }
   ctx.restore();
 
@@ -1855,10 +1989,11 @@ const $tlStrip2 = document.getElementById('tlStrip2');
 const $tlTag2 = document.getElementById('tlTag2');
 /* the layer-2 row folds down to just its tag; folding it hands editing back
    to layer 1 so the hidden layer can't be drawn on by accident */
-let tl2Fold = false;
+
 $tlTag2.onclick = () => {
-  tl2Fold = !tl2Fold;
-  if (tl2Fold && LI === 1) useLayer(0);
+  l2Hide = !l2Hide;
+  if (l2Hide && LI === 1) useLayer(0);   // you cannot draw on what you cannot see
+  toast(l2Hide ? 'Layer 2 hidden, drawing kept' : 'Layer 2 visible');
   buzz(6); refreshUI(); tlRender(); dirty = true;
 };
 
@@ -1881,6 +2016,26 @@ function buildStrip(strip, cs, k){
   });
 }
 
+/* The two layers share one clock, so the shorter one pads out with blank
+   time: an explicit filler cel carrying the remainder. Retiming a frame moves
+   that remainder — on the OTHER row, which is the one you are lining up
+   against — so it is its own function and runs live off the drag rather than
+   waiting for you to let go. */
+function syncFill(){
+  for (const s of [$tlStrip, $tlStrip2]){
+    const old = s.querySelector('.cel.fill');
+    if (old) old.remove();
+  }
+  if (!tlOpen || !l2On()) return;
+  syncLayer();
+  const t0 = layerTotal(docLayers[0].cels), t1 = layerTotal(docLayers[1].cels);
+  if (t0 === t1) return;
+  const el = document.createElement('div');
+  el.className = 'cel fill';
+  el.innerHTML = '<span class="dur">+' + holdLabel(Math.abs(t0 - t1)) + '</span>';
+  (t0 < t1 ? $tlStrip : $tlStrip2).appendChild(el);
+}
+
 function tlRender(){
   syncLayer();
   tlTabRender();
@@ -1890,27 +2045,18 @@ function tlRender(){
   $tlOnion.innerHTML = ico('onion') +
     (S.onion ? '<i>' + ['','prev','prev2','both'][S.onion] + '</i>' : '');
   $tl2.classList.toggle('open', tlOpen && proOn());
-  $tl2.classList.toggle('fold', tl2Fold);
+  $tl2.classList.toggle('fold', l2Hide);
   $tlTag2.classList.toggle('on', LI === 1);
-  $tlTag2.textContent = 'L2 ' + (tl2Fold ? '▸' : '▾');
+  $tlTag2.innerHTML = 'L2' + ico(l2Hide ? 'eyeoff' : 'eye');
   if (!tlOpen) return;
   // Rebuilding the strip resets scrollLeft, which would yank the view back
   // under the finger every time a hold is retimed. Put it back, and only
   // auto-reveal when the selected frame actually moved.
   const keepX = $tlStrip.scrollLeft, keepX2 = $tlStrip2.scrollLeft, prevCur = $tlStrip._cur;
   buildStrip($tlStrip, docLayers[0].cels, 0);
-  if (proOn() && !tl2Fold){
-    buildStrip($tlStrip2, docLayers[1].cels, 1);
-    // the layers must add up to the same run time: the shorter one shows the
-    // remainder as an explicit blank filler
-    const t0 = layerTotal(docLayers[0].cels), t1 = layerTotal(docLayers[1].cels);
-    if (t0 !== t1){
-      const el = document.createElement('div');
-      el.className = 'cel fill';
-      el.innerHTML = '<span class="dur">+' + holdLabel(Math.abs(t0 - t1)) + '</span>';
-      (t0 < t1 ? $tlStrip : $tlStrip2).appendChild(el);
-    }
-  } else $tlStrip2.innerHTML = '';
+  if (l2On()) buildStrip($tlStrip2, docLayers[1].cels, 1);
+  else $tlStrip2.innerHTML = '';
+  syncFill();
   $tlStrip.scrollLeft = keepX; $tlStrip2.scrollLeft = keepX2;
   const curKey = cur + LI * 1000;
   if (prevCur !== curKey){
@@ -2110,6 +2256,7 @@ function celMove(e){
     const c = cels[press.i];
     c.hold = clamp(Math.round(press.hold0 - dy / 5), 1, 600);
     setLevel(press.el, c.hold);
+    syncFill();          // the other layer's leftover time, live under the finger
     queueSave();
   } else if (press.mode === 'scroll'){
     const now = performance.now(), dt = now - press.lt;
@@ -2215,13 +2362,13 @@ function markPlaying(){
       box[i].classList.toggle('now', playing && i === idx);
   };
   mark($tlStrip, docLayers[0].cels);
-  if (proOn()) mark($tlStrip2, docLayers[1].cels);
+  if (l2On()) mark($tlStrip2, docLayers[1].cels);
 }
 
 function advancePlay(){
   syncLayer();
   playT++;
-  const len = proOn()
+  const len = l2On()
     ? Math.max(layerTotal(docLayers[0].cels), layerTotal(docLayers[1].cels))
     : layerTotal(cels);
   if (playT >= len){
@@ -2285,12 +2432,14 @@ $tlDup.onclick = () => { duplicateCel(cur); buzz(8); toast('Frame duplicated'); 
 $tlDel.innerHTML = ico('trash');
 $tlDel.onclick = () => { removeCel(cur); buzz(10); };
 
-/* ---------------- undo / redo ---------------- */
+/* ---------------- undo / redo ----------------
+   Both stacks run as deep as the drawing does. They hold vectors, which are
+   small, and the bake means a deep history costs nothing to replay — so
+   there is no length at which throwing your work away would be a kindness. */
 function undo(){
   commitFloat();
   if (!strokes.length) return;
   redoStack.push(strokes.pop());
-  if (redoStack.length > MAX_UNDO) redoStack.shift();
   replayAll(); cels[cur].tdirty = true; refreshActions(); queueSave(); buzz(8);
 }
 function redo(){
@@ -2635,7 +2784,7 @@ function syncSheet(){
 function bindTog(id, key){
   const el = document.getElementById(id);
   const sync = () => el.classList.toggle('on', !!S[key]);
-  el.onclick = () => { S[key] = !S[key]; sync(); buzz(6); if (key === 'pressure') replayAll(); };
+  el.onclick = () => { S[key] = !S[key]; sync(); buzz(6); if (key === 'pressure') invalidateAllCels(); };
   sync();
 }
 bindTog('tStylus','stylusOnly');
@@ -2649,7 +2798,7 @@ const $tPro = document.getElementById('tPro');
 function syncPro(){ $tPro.classList.toggle('on', !!S.pro); }
 $tPro.onclick = () => {
   S.pro = !S.pro;
-  if (S.pro) ensureLayer2();
+  if (S.pro){ ensureLayer2(); l2Hide = false; }
   else if (LI === 1) useLayer(0);
   syncPro(); buzz(6);
   refreshUI(); tlRender(); queueSave(); dirty = true;
@@ -2798,7 +2947,7 @@ function resetClear(){ armedBtns.forEach(r => r()); }
 
 function clearFrame(){
   strokes.length = 0; redoStack.length = 0; live = null; flt = null; sel = null; stopSpray();
-  clearLayers(); cels[cur].tdirty = true; dirty = true;
+  dropBake(cels[cur]); clearLayers(); cels[cur].tdirty = true; dirty = true;
   refreshActions(); tlRender(); queueSave(); toast('Frame cleared');
 }
 
@@ -2806,11 +2955,17 @@ armButton('sClear', 'Clear this frame',
   () => strokes.length ? true : (toast('Already blank'), false),
   () => { closeSheet(); clearFrame(); });
 
+/* "Everything" means both layers. Asking only the active one meant standing
+   on a blank layer-2 frame refused to delete a full layer 1. */
+const anyArt = () => {
+  syncLayer();
+  return docLayers.some(L => L.cels.length > 1 || L.cels.some(c => c.strokes.length));
+};
 armButton('sWipe', 'Delete everything',
-  () => (cels.length > 1 || strokes.length) ? true : (toast('Nothing to delete'), false),
+  () => anyArt() ? true : (toast('Nothing to delete'), false),
   () => {
     live = null; flt = null; sel = null; stopSpray(); playing = false;
-    const h = cels[0] ? cels[0].hold : 12;
+    const h = docLayers[0].cels[0] ? docLayers[0].cels[0].hold : 12;
     docLayers = [{cels:[newCel(h)], cur:0}];
     if (S.pro) docLayers.push({cels:[newCel(h)], cur:0});
     LI = 0; cels = docLayers[0].cels; useCel(0);
@@ -3079,7 +3234,7 @@ function makeGif(embed){
   const wig = SPEEDS[S.speed].v > 0;
   const CAP = 300;
   syncLayer();
-  const l0 = docLayers[0].cels, l1 = proOn() ? docLayers[1].cels : null;
+  const l0 = docLayers[0].cels, l1 = l2On() ? docLayers[1].cels : null;
   const total = Math.max(layerTotal(l0), l1 ? layerTotal(l1) : 0);
   const n = Math.min(total, CAP);
   const seq = [];
@@ -3193,12 +3348,16 @@ function queueSave(){
   clearTimeout(saveT); saveT = setTimeout(save, 2500);
 }
 const r1 = v => Math.round(v * 10) / 10;
-const serialStroke = s => s.kind === 'raster'
+/* A finished stroke never changes again, so its encoding is cached on it.
+   Without that, every autosave re-walked every node of every stroke and
+   re-encoded every pasted bitmap to PNG — a freeze that grew with the
+   drawing, landing a couple of seconds after you lifted your finger. */
+const serialStroke = s => s.ser || (s.ser = s.kind === 'raster'
   ? {k:'r', ty:s.type, src:s.src, dst:s.dst, fx:s.flipX?1:0, fy:s.flipY?1:0,
      pl: s.payload ? s.payload.map(c => c.toDataURL('image/png')) : null}
   : {t:s.def.tool, c:s.def.ci, z:s.def.brush, d:s.def.seed,
      p:s.def.pen?1:0, j:s.def.jit,
-     n:s.nodes.flatMap(n => [r1(n.x), r1(n.y), Math.round((n.p||0.5)*100)])};
+     n:s.nodes.flatMap(n => [r1(n.x), r1(n.y), Math.round((n.p||0.5)*100)])});
 
 async function loadStrokes(list){
   const out = [];
@@ -3247,7 +3406,7 @@ function docObject(){
     cels: serialCels(docLayers[0].cels),
   };
   if (docLayers[1]){
-    o.pro = S.pro ? 1 : 0; o.li = LI;
+    o.pro = S.pro ? 1 : 0; o.li = LI; o.h2 = l2Hide ? 1 : 0;
     o.cels2 = serialCels(docLayers[1].cels);
     o.cur2 = docLayers[1].cur;
   }
@@ -3289,7 +3448,7 @@ async function applyDoc(d){
   S.pair = Array.isArray(d.pr) && d.pr.length === PAIRS ? d.pr.map(v => v ? 1 : 0) : [0,0,0];
   if (S.ci > 0) S.pair[slotOf(S.ci)] = (S.ci - 1) % 2;   // the swatch must show what is selected
   S.onion = d.onion ?? 0; S.loop = d.loop !== 0;
-  S.pro = !!d.pro;
+  S.pro = !!d.pro; l2Hide = !!d.h2;
   DOC = {w:DOCS[S.docI].w, h:DOCS[S.docI].h};
   const loadLayer = async list => {
     const cs = list.map(c => newCel(c.h));
