@@ -2830,21 +2830,48 @@ function refMode(on){
   dirty = true;
 }
 function refClear(){
+  refRemember();
   if (ref && ref.url) URL.revokeObjectURL(ref.url);
   ref = null; refMode(false); refSync(); dirty = true;
 }
+
+/* Tracing an animation means one photo per frame, every one of them framed
+   the same way. Re-centring each at contain size threw that alignment away
+   on every load and left you nudging the photo back into register by eye. So
+   the last placement is kept for the session and the next photo is fitted
+   into that same box — a frame from the same source has the same aspect and
+   lands exactly where its predecessor was. The photo is still dropped in
+   placement mode, so anything that doesn't line up is a drag away. */
+let refLast = null;
+function refRemember(){
+  if (ref) refLast = {x:ref.x, y:ref.y, w:ref.w, h:ref.h};
+}
+function refPlace(img){
+  const fit = (bx, by, bw, bh, reused) => {
+    const k = Math.min(bw / img.width, bh / img.height);
+    const w = img.width * k, h = img.height * k;
+    return {w, h, x: bx + (bw - w)/2, y: by + (bh - h)/2, reused};
+  };
+  if (refLast){
+    const cx = refLast.x + refLast.w/2, cy = refLast.y + refLast.h/2;
+    // a paper resize can strand the remembered box off the page: start over
+    if (cx > 0 && cy > 0 && cx < DOC.w && cy < DOC.h)
+      return fit(refLast.x, refLast.y, refLast.w, refLast.h, true);
+  }
+  return fit(0, 0, DOC.w, DOC.h, false);   // otherwise the whole photo, centred
+}
+
 function refLoad(file){
   const url = URL.createObjectURL(file);
   const img = new Image();
   img.onload = () => {
-    refClear();
-    // dropped in at "contain" size, so the whole photo is there to work with
-    const k = Math.min(DOC.w / img.width, DOC.h / img.height);
-    const w = img.width * k, h = img.height * k;
-    ref = {img, url, w, h, x:(DOC.w - w)/2, y:(DOC.h - h)/2,
+    refClear();                            // which also banks its placement
+    const p = refPlace(img);
+    ref = {img, url, w:p.w, h:p.h, x:p.x, y:p.y,
            a: $refAlpha.value / 100, cel: cels[cur]};
     if (playing) togglePlay();
     closeSheet(); refSync(); refMode(true);
+    if (p.reused) toast('Lined up with the last reference');
     document.getElementById('hint').style.opacity = 0;
   };
   img.onerror = () => { URL.revokeObjectURL(url); toast('That image would not open'); };
